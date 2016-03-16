@@ -208,9 +208,9 @@
 #endif
 
 /*******************************************************************************
- * Load address of BL3-3 in the SVT port
+ * Load address of BL3-3
  ******************************************************************************/
-#define NS_IMAGE_OFFSET			(DRAM_BASE + 0x36800000)
+#define NS_IMAGE_OFFSET			(DRAM_BASE + 0x2400000)
 
 /*******************************************************************************
  * Platform specific page table and MMU setup constants
