@@ -175,7 +175,7 @@ void init_boardid(void)
 void bl2_early_platform_setup(meminfo_t *mem_layout)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(NXP_UART0_BASE, NXP_UART0_CLK_IN_HZ, NXP_BAUDRATE);
+	console_init(CONSOLE_UART_BASE, NXP_UART_CLK_IN_HZ, NXP_BAUDRATE);
 
 	/* Setup the BL2 memory layout */
 	bl2_tzram_layout = *mem_layout;
@@ -267,7 +267,6 @@ void bl2_plat_set_bl31_ep_info(image_info_t *bl31_image_info,
 void bl2_plat_set_bl32_ep_info(image_info_t *bl32_image_info,
 			       entry_point_info_t *bl32_ep_info)
 {
-	printf("BL2: file:%s func:%s line:%d\n", __FILE__, __func__, __LINE__);
 	SET_SECURITY_STATE(bl32_ep_info->h.attr, SECURE);
 	/*
 	* The Secure Payload Dispatcher service is responsible for

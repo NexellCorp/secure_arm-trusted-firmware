@@ -181,7 +181,11 @@ CFLAGS			+= 	-nostdinc -ffreestanding -Wall			\
 				-mgeneral-regs-only -mstrict-align		\
 				-std=c99 -c -Os					\
 				${DEFINES} ${INCLUDES}
+
 CFLAGS			+=	-ffunction-sections -fdata-sections
+ifneq (${PLAT_UART_BASE},)
+CFLAGS			+=	-DPLAT_UART_BASE=${PLAT_UART_BASE}
+endif
 
 LDFLAGS			+=	--fatal-warnings -O1
 LDFLAGS			+=	--gc-sections

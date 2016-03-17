@@ -83,7 +83,7 @@ void bl1_early_platform_setup(void)
 	const size_t bl1_size = BL1_RAM_LIMIT - BL1_RAM_BASE;
 
 	/* Initialize the console to provide early debug support */
-	console_init(NXP_UART0_BASE, NXP_UART0_CLK_IN_HZ, NXP_BAUDRATE);
+	console_init(CONSOLE_UART_BASE, NXP_UART_CLK_IN_HZ, NXP_BAUDRATE);
 
 	s5p6818_timer_init();
 

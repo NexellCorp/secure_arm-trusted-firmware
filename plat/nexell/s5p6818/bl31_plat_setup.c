@@ -113,7 +113,7 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 			       void *plat_params_from_bl2)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(NXP_UART0_BASE, NXP_UART0_CLK_IN_HZ, NXP_BAUDRATE);
+	console_init(CONSOLE_UART_BASE, NXP_UART_CLK_IN_HZ, NXP_BAUDRATE);
 
 #if 0
 	/*

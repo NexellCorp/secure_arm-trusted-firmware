@@ -91,9 +91,21 @@
 /*******************************************************************************
  * NXP_UART related constants
  ******************************************************************************/
-#define NXP_UART0_BASE			0xC00A1000
+#define UART0_BASE			0xC00A1000
+#define UART1_BASE			0xC00A0000
+#define UART2_BASE			0xC00A2000
+#define UART3_BASE			0xC00A3000
+#define UART4_BASE			0xC006D000
+#define UART5_BASE			0xC006F000
+
+#ifdef PLAT_UART_BASE
+#define CONSOLE_UART_BASE		(PLAT_UART_BASE)
+#else
+#define CONSOLE_UART_BASE		(UART3_BASE)
+#endif
+
 #define NXP_BAUDRATE			115200
-#define NXP_UART0_CLK_IN_HZ		19200000
+#define NXP_UART_CLK_IN_HZ		19200000
 
 /*******************************************************************************
  * CCI-400 related constants

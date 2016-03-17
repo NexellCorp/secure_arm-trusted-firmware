@@ -51,7 +51,7 @@
 	.globl	sec_entry_point
 
 	/* Define a crash console for the plaform */
-#define S5P6818_CRASH_CONSOLE_BASE		NXP_UART0_BASE
+#define S5P6818_CRASH_CONSOLE_BASE		CONSOLE_UART_BASE
 
 	/* -----------------------------------------------------
 	 *  unsigned int plat_my_core_pos(void)
@@ -87,7 +87,7 @@ endfunc plat_calc_core_pos
 	 */
 func plat_crash_console_init
 	mov_imm	x0, S5P6818_CRASH_CONSOLE_BASE
-	mov_imm	x1, NXP_UART0_CLK_IN_HZ
+	mov_imm	x1, NXP_UART_CLK_IN_HZ
 	mov_imm	x2, NXP_BAUDRATE
 	b	console_core_init
 endfunc plat_crash_console_init
