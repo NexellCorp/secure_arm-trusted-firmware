@@ -86,5 +86,6 @@ extern void plat_gic_init(void);
 extern void usb_download(void);
 
 void plat_security_setup(void);
+extern void plat_reg_delay(int count);
 
 #endif /* __S5P6818_PRIVATE_H__ */

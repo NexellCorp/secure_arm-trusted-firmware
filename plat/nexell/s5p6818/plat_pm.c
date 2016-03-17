@@ -48,7 +48,7 @@
 static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 {
 	unsigned int ctrl_addr;
-	unsigned int data;
+	unsigned int data, regdata;
 
 	/* Set arm64 mode */
 	ctrl_addr = NXP_CPU_CLUSTERx_CTRL(linear_id);
@@ -57,9 +57,26 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(linear_id));
 	mmio_write_32(ctrl_addr, data);
 
-	mmio_write_32(NXP_CPU_RESET_ENB_CTRL, 1);
+	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,   (1 << linear_id));
+	__asm__ __volatile__ ("dmb sy");
+	__asm__ __volatile__ ("isb");
+	plat_reg_delay(10000);
+	while (mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << linear_id))
+		;
+
+	regdata = mmio_read_32(NXP_CPU_PWRDOWN_REQ_CTRL);
+	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, regdata & ~(1 << linear_id));
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << linear_id));
+	__asm__ __volatile__ ("dmb sy");
+	__asm__ __volatile__ ("isb");
+	plat_reg_delay(10000);
+	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << linear_id)))
+		;
+
+	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 
 	/* Checking WFI of cpus */
 	if (cluster)
@@ -69,7 +86,6 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 		while (mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu))
 			;
 
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, 0);
 }
 
 /*******************************************************************************

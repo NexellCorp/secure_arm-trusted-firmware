@@ -64,6 +64,15 @@ func plat_my_core_pos
 	b	plat_calc_core_pos
 endfunc plat_my_core_pos
 
+.global plat_reg_delay
+func plat_reg_delay
+1:
+	sub	x0, x0, #1
+	cmp x0, #0
+	bne	1b
+	ret
+endfunc plat_reg_delay
+
 	/* -----------------------------------------------------
 	 *  unsigned int plat_arm_calc_core_pos(uint64_t mpidr)
 	 *  Helper function to calculate the core position.
