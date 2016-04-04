@@ -70,7 +70,7 @@ ARM_CCI_PRODUCT_ID		:= 400
 # This defaults to being present in DEBUG builds only.
 ASM_ASSERTION			:= ${DEBUG}
 # Build option to choose whether Trusted firmware uses Coherent memory or not.
-USE_COHERENT_MEM		:= 1
+USE_COHERENT_MEM		:= 0
 # Flag used to choose the power state format viz Extended State-ID or the Original
 # format.
 PSCI_EXTENDED_STATE_ID		:= 0
