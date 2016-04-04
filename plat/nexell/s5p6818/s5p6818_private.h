@@ -63,9 +63,12 @@ void plat_configure_mmu_el1(unsigned long total_base,
 void plat_configure_mmu_el3(unsigned long total_base,
 			    unsigned long total_size,
 			    unsigned long,
-			    unsigned long,
-			    unsigned long,
-			    unsigned long);
+			    unsigned long
+#if USE_COHERENT_MEM
+			    , unsigned long,
+			    unsigned long
+#endif
+			    );
 
 uint32_t plat_get_spsr_for_bl32_entry(void);
 uint32_t plat_get_spsr_for_bl33_entry(void);
