@@ -106,7 +106,7 @@ int32_t s5p6818_affinst_on(uint64_t mpidr,
 	cpu = mpidr & MPIDR_CPU_MASK;
 
 	VERBOSE("#%s, mpidr:%llx, afflvl:%x, state:%x\n",
-			__func__, mpidr, afflvl, state);
+			__func__, (unsigned long long)mpidr, afflvl, state);
 
 	/* directly return for power on */
 	if (state == PSCI_STATE_ON)
