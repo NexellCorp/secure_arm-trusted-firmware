@@ -43,10 +43,12 @@
 
 /* The size of DDR RAM is 1GB. */
 #define DRAM_BASE			0x41800000
-#define DRAM_SIZE			0x3E600000UL	/* 0x7fe0_0000 */
+#define DRAM_SIZE			0x7E600000UL	/* 0xbfe0_0000 */
 
-#define XG2RAM0_BASE			0x7FE00000
-#define XG2RAM0_SIZE			0x00400000
+#define XG2RAM0_BASE			0xBFE00000
+#define XG2RAM0_SIZE			0x00200000
+
+#define BL1_LIMIT			(0xBFE98000)
 
 #define PLAT_TRUSTED_SRAM_ID		0
 #define PLAT_TRUSTED_DRAM_ID		1

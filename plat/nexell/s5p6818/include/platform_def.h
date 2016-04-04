@@ -150,8 +150,8 @@
 #define BL1_RO_BASE			(XG2RAM0_BASE + BL1_XG2RAM0_OFFSET)
 #define BL1_RO_LIMIT			(XG2RAM0_BASE + 0x10000)
 #define BL1_RW_BASE			(BL1_RO_LIMIT)
-#define BL1_RW_SIZE			(BL31_LIMIT - BL1_RW_BASE)
-#define BL1_RW_LIMIT			(BL31_LIMIT)
+#define BL1_RW_SIZE			(BL1_LIMIT - BL1_RW_BASE)
+#define BL1_RW_LIMIT			(BL1_LIMIT)
 
 /*******************************************************************************
  * BL2 specific defines.
