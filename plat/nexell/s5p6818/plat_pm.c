@@ -192,7 +192,25 @@ static int32_t s5p6818_do_plat_actions(uint32_t afflvl, uint32_t state)
 
 	return 0;
 }
+static void s5p6818_cpu_off(uint32_t afflvl)
+{
+	uint32_t regdata, linear_id;
 
+	linear_id = platform_get_core_pos(plat_my_core_pos());
+
+	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,  regdata & ~(1<< linear_id));
+	/* 
+	 * TODO afflvl 1 is need more power function. but currently skiped
+	 * if all cpu is off in same cluster, system will be corrupted
+	 */
+	if(linear_id & 0x3)
+		mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
+	__asm__ __volatile__ ("dmb sy");
+	__asm__ __volatile__ ("isb");
+	__asm__ __volatile__ ("dsb sy");
+	__asm__ __volatile__ ("wfi");
+}
 static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 {
 	if (s5p6818_do_plat_actions(afflvl, state) == -EAGAIN)
@@ -204,7 +222,8 @@ static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 	if (afflvl != MPIDR_AFFLVL0) {
 		/* Disable coherency if this cluster is to be turned off */
 		plat_cci_disable();
-	}
+	}else
+		s5p6818_cpu_off(afflvl);
 }
 
 static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,

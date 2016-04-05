@@ -110,7 +110,10 @@ int psci_do_cpu_off(unsigned int end_pwrlvl)
 	 * Plat. management: Perform platform specific actions to turn this
 	 * cpu off e.g. exit cpu coherency, program the power controller etc.
 	 */
+	/* core power off is not wait wfi, so plat power off will called last */
+#ifndef PLAT_s5p6818
 	psci_plat_pm_ops->pwr_domain_off(&state_info);
+#endif
 
 exit:
 	/*
@@ -139,6 +142,13 @@ exit:
 		 * Enter a wfi loop which will allow the power controller to
 		 * physically power down this cpu.
 		 */
+#ifdef PLAT_s5p6818
+		/*
+		 * core power off is not wait wfi,
+		 * so plat power off must be called last.
+		 */
+		psci_plat_pm_ops->pwr_domain_off(&state_info);
+#endif
 		psci_power_down_wfi();
 	}
 
