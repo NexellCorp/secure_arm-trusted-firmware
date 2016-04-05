@@ -404,4 +404,15 @@
 #define PERI_RST8_DDRT				(1 << 17)
 #endif
 
+#define DEVICE_RESET_BASE	0xc0012000
+#define DEVICE_RESET_WDT0	58
+#define DEVICE_RESET_WDT1	59
+
+#define WDT_BASE		0xc0019000
+#define WDT_PRE_CLK		0xff
+#define WDT_DIVFACTOR16		0x0
+#define WDT_DIVFACTOR32		0x1
+#define WDT_DIVFACTOR64		0x2
+#define WDT_DIVFACTOR128	0x3
+
 #endif /* __S5P6818_REGS_PERI_H__ */
