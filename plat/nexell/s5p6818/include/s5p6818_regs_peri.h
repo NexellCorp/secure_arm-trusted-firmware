@@ -408,6 +408,9 @@
 #define DEVICE_RESET_WDT0	58
 #define DEVICE_RESET_WDT1	59
 
+#define GPIO_BASE               0xc001A000
+#define GPIO_OFFSET             0x1000
+
 #define WDT_BASE		0xc0019000
 #define WDT_PRE_CLK		0xff
 #define WDT_DIVFACTOR16		0x0

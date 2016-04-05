@@ -259,6 +259,125 @@ static void s5p6818_affinst_suspend_finish(uint32_t afflvl,
 	mmio_write_32(NXP_CPUx_RVBARADDR(linear_id), 0x0);
 }
 
+/* 
+ * send nxe2000 pmic power off command through i2c port 2
+ * device id:0x32, register number 0xE, register value 0x1
+ */
+struct nxi2c {
+	uint32_t iccr;
+	uint32_t icsr;
+	uint32_t icar;
+	uint32_t idsr;
+	uint32_t lr;
+};
+#define NUMOFI2CPORT
+#define NXI2C_PORT      2
+#define PMIC_ID         (0x32<<1)
+#define PMIC_PWROFF     0x0E
+static uintptr_t i2cbase [NUMOFI2CPORT] =
+{
+	0xc00a4000,
+	0xc00a5000,
+	0xC00A6000
+};
+static uintptr_t i2cclkgen [NUMOFI2CPORT] =
+{
+	0xc00ae000,
+	0xc00af000,
+	0xC00B0000
+};
+static uint8_t i2crst[NUMOFI2CPORT] =
+{ 20, 21, 22};
+
+static void __dead2 s5p6818_system_off(void)
+{
+	uint32_t regvalue;
+	register struct nxi2c *I2C_BASE = (struct nxi2c *)i2cbase[NXI2C_PORT];
+	uintptr_t clkgen = i2cclkgen[NXI2C_PORT];
+
+	regvalue = mmio_read_32(clkgen);
+	mmio_write_32(clkgen,
+			regvalue | 1<<3 );      /* set i2c pclk mode*/
+
+	regvalue = mmio_read_32((uintptr_t)(GPIO_BASE+GPIO_OFFSET*3+0x20));
+	mmio_write_32((uintptr_t)(GPIO_BASE+GPIO_OFFSET*3+0x20),
+			(regvalue & ~0xF<<(6*2)) | 5<<(6*2));   /* gpio alt1 */
+
+	regvalue = mmio_read_32((uintptr_t)DEVICE_RESET_BASE);
+	mmio_write_32((uintptr_t)DEVICE_RESET_BASE,
+			regvalue | 1<<(i2crst[NXI2C_PORT]));    /* reset off */
+
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+			0xF<<5 | 0xF<<0);       /* pclk/256/(15+1) */
+	mmio_write_32((uintptr_t)&I2C_BASE->lr,
+			1<<2 | 3<<0);   /* filter enable, 15 clocks delayed */
+
+	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+			3<<6 | 1<<5 | 1<<4);    /* enable tx rx */
+
+	mmio_write_32((uintptr_t)&I2C_BASE->idsr, PMIC_ID & 0xFE);
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
+	mmio_write_32((uintptr_t)&I2C_BASE->icsr, regvalue | 1<<5); /* start */
+
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
+	/* wait int pending */
+	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+		;
+
+	if(mmio_read_32((uintptr_t)&I2C_BASE->icsr) & 1<<0)
+	{
+		VERBOSE("no device ack\r\n");
+		goto i2cexit;
+	}
+
+	mmio_write_32((uintptr_t)&I2C_BASE->idsr, PMIC_PWROFF);
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
+	/* wait int pending */
+	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+		;
+
+	mmio_write_32((uintptr_t)&I2C_BASE->idsr, 1);
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr, regvalue & ~(1<<4));
+	/* wait int pending */
+	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+		;
+
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr,regvalue | (1<<4));
+
+	if(mmio_read_32((uintptr_t)&I2C_BASE->icsr) & 1<<0)
+	{
+		VERBOSE("no data ack\r\n");
+		goto i2cexit;
+	}
+
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
+	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+			(regvalue & ~(1<<4)) | (1<<8));
+
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
+	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+			regvalue & ~(1<<5)); /* stop */
+
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
+	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+			regvalue & ~(1<<4));    /* enable tx rx */
+
+i2cexit:
+	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
+	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+			regvalue & ~(1<<4));    /* bus disable */
+	VERBOSE("i2c stop\r\n");
+
+	wfi();
+	panic();
+}
+
 static void __dead2 s5p6818_system_reset(void)
 {
         uint32_t regvalue;
@@ -291,7 +410,7 @@ static const plat_pm_ops_t s5p6818_ops = {
 	.affinst_standby	= NULL,
 	.affinst_suspend	= s5p6818_affinst_suspend,
 	.affinst_suspend_finish	= s5p6818_affinst_suspend_finish,
-	.system_off		= NULL,
+	.system_off		= s5p6818_system_off,
 	.system_reset		= s5p6818_system_reset,
 };
 
