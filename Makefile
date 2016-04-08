@@ -242,6 +242,11 @@ SPDS			:=	$(shell ls -I none services/spd)
 # Platforms providing their own TBB makefile may override this value
 INCLUDE_TBBR_MK		:=	1
 
+ifneq (${PLAT_DRAM_SIZE},)
+CFLAGS			+=	-DPLAT_DRAM_SIZE=${PLAT_DRAM_SIZE}
+ASFLAGS			+=	-DPLAT_DRAM_SIZE=${PLAT_DRAM_SIZE}
+endif
+
 
 ################################################################################
 # Include SPD Makefile if one has been specified

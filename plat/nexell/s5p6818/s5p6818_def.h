@@ -38,17 +38,40 @@
 /*******************************************************************************
  * Nexell memory map related constants
  ******************************************************************************/
+/*
+ * S5P6818 DRAM memory layout
+ * +----------------------------+ 0x40000000 + DRAM_SIZE
+ * | ARM Trusted Firmware (2MB) |
+ * +----------------------------+ 0x40000000 + DRAM_SIZE - 2MB
+ * |                            |
+ * |   Normal Memory            |
+ * |                            |
+ * +----------------------------+ 0x41800000
+ * |     FIP*            (24MB) |
+ * +----------------------------+ 0x40000000
+ *
+ *  * FIP will be removed as the loader reads direct from storage.
+ */
 #define FLASH_BASE			0x40000000
 #define FLASH_SIZE			0x01800000
 
-/* The size of DDR RAM is 1GB. */
+/* The size of DRAM is 1GB as default. */
+#define XG2RAM0_SIZE			0x200000
 #define DRAM_BASE			0x41800000
-#define DRAM_SIZE			0x7E600000UL	/* 0xbfe0_0000 */
 
-#define XG2RAM0_BASE			0xBFE00000
-#define XG2RAM0_SIZE			0x00200000
-
-#define BL1_LIMIT			(0xBFE98000)
+#if defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 2048
+#define XG2RAM0_BASE			0xbfe00000
+#define DRAM_SIZE			0x7e600000UL
+#define BL1_LIMIT			0xbfe98000
+#elif defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 512
+#define XG2RAM0_BASE			0x5fe00000
+#define DRAM_SIZE			0x1e600000UL
+#define BL1_LIMIT			0x5fe98000
+#else
+#define XG2RAM0_BASE			0x7fe00000
+#define DRAM_SIZE			0x3e600000UL
+#define BL1_LIMIT			0x7fe98000
+#endif /* PLAT_DRAM_SIZE */
 
 #define PLAT_TRUSTED_SRAM_ID		0
 #define PLAT_TRUSTED_DRAM_ID		1
