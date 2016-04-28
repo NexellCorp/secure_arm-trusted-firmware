@@ -57,13 +57,21 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(linear_id));
 	mmio_write_32(ctrl_addr, data);
 
+	if (cluster)
+		while (!(mmio_read_32(NXP_TIEOFF_REG(107)) & (1 << cpu)))
+			;
+	else
+		while (!(mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu)))
+			;
+
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
+	/* wait update of NXP_CPU_PWR_STATUS register: 10000 is loop count */
 	plat_reg_delay(10000);
-	while (mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << linear_id))
+	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << (linear_id+8))))
 		;
 
 	regdata = mmio_read_32(NXP_CPU_PWRDOWN_REQ_CTRL);
@@ -71,21 +79,23 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << linear_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
-	plat_reg_delay(10000);
-	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << linear_id)))
+	plat_reg_delay(10000);	/* if bus is busy, status is not updated */
+	while (mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << (linear_id+8)))
 		;
 
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 
-	/* Checking WFI of cpus */
+	/* TODO: need workaround code.
+	 * Current code has implicit problem when rich os is busy
+	 * and status of new added cpu is not wfi.
+	 */
 	if (cluster)
 		while (mmio_read_32(NXP_TIEOFF_REG(107)) & (1 << cpu))
 			;
 	else
 		while (mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu))
 			;
-
 }
 
 /*******************************************************************************
