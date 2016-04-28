@@ -261,7 +261,21 @@ static void s5p6818_affinst_suspend_finish(uint32_t afflvl,
 
 static void __dead2 s5p6818_system_reset(void)
 {
+        uint32_t regvalue;
 	VERBOSE("%s: reset system\n", __func__);
+
+	regvalue = mmio_read_32(DEVICE_RESET_BASE+((DEVICE_RESET_WDT0>>5)<<2));
+	mmio_write_32(DEVICE_RESET_BASE+((DEVICE_RESET_WDT0>>5)<<2), 
+			regvalue | 3<<(DEVICE_RESET_WDT0 & (32-1)));
+
+	regvalue =      WDT_PRE_CLK<<8 |       /* prescaler */
+		WDT_DIVFACTOR128<<3  |
+		0x1<<2;         /* watchdog reset enable */
+
+	mmio_write_32(WDT_BASE, regvalue);
+	mmio_write_32(WDT_BASE+8, 0x1); /* reset count */
+	regvalue |= 1<<5;       /* watchdog timer enable */
+	mmio_write_32(WDT_BASE, regvalue);
 
 	wfi();
 	panic();
