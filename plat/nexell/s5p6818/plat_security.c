@@ -33,19 +33,23 @@
 #include <stdint.h>
 #include <strings.h>
 #include <platform_def.h>
+#include <nx_s5p6818.h>
 
 #define PORTNUM_MAX		1
 
 #define TZPC_GROUPNUM_MAX	7
 #define TZPC_PORTNUM_MAX	4
 
-#define DREX_SECURITY_BASE	0xC00E5000
-#define TZPC_BASE		0xC0301000
+#define DREX_SECURITY_BASE	PHY_BASEADDR_DREX_TZ_MODULE
+#define TZPC_BASE		(PHY_BASEADDR_DREXTZASC_MODULE + 0x1000)
 #define TZPC_OFFSET		0x1000
 
 
 #define TZPC_S_MODE		0
 #define TZPC_NS_MODE		1
+
+#define TZPC_UNLOCK		0
+#define TZPC_LOCK		1
 
 #define TZPC_R0SIZE_NONE	0
 #define TZPC_R0SIZE_4KB		1
@@ -136,7 +140,7 @@ const struct tzpc_prot_bit tzpc_prot_bit[TZPC_GROUPNUM_MAX*TZPC_PORTNUM_MAX] = {
 		TZPC_S_MODE,	/* NC */
 		TZPC_S_MODE,	/* NC */
 		TZPC_S_MODE,	/* drex_0_secure_boot_lock */
-		TZPC_S_MODE	/* GIC400 */
+		TZPC_UNLOCK	/* GIC400 */
 	},
 	{
 		TZPC_NS_MODE,	/* sfr0_bus m0 */

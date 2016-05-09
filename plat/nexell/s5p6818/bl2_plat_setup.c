@@ -38,7 +38,6 @@
 #include <platform_def.h>
 #include <string.h>
 #include <mmio.h>
-#include <s5p6818.h>
 #include <s5p6818_def.h>
 #include <s5p6818_private.h>
 
@@ -151,20 +150,7 @@ struct entry_point_info *bl2_plat_get_bl31_ep_info(void)
 
 void init_boardid(void)
 {
-	unsigned int reg;
-
-	/* Set chip id to sram */
-	reg = read_midr_el1();
-	mmio_write_32(MEMORY_AXI_CHIP_ADDR, reg);
-	INFO("[BDID] [%x] midr: 0x%x\n", MEMORY_AXI_CHIP_ADDR, reg);
-
-	/* Set board type to sram */
-	mmio_write_32(MEMORY_AXI_BOARD_TYPE_ADDR, 0x0);
-	INFO("[BDID] [%x] board type: 0\n", MEMORY_AXI_BOARD_TYPE_ADDR);
-
-	/* Set board id to sram */
-	mmio_write_32(MEMORY_AXI_BOARD_ID_ADDR, 0x2b);
-	INFO("[BDID] [%x] board id: 0x2b\n", MEMORY_AXI_BOARD_ID_ADDR);
+	return;
 }
 
 /*******************************************************************************
@@ -220,20 +206,6 @@ void bl2_plat_arch_setup(void)
 #endif
 			  );
 }
-
-/*******************************************************************************
- * Populate the extents of memory available for loading BL3-0, i.e. anywhere
- * in trusted RAM as long as it doesn't overwrite BL2.
- ******************************************************************************/
-#if 0
-void bl2_plat_get_bl30_meminfo(meminfo_t *bl30_meminfo)
-{
-	bl30_meminfo->total_base = BL30_BASE;
-	bl30_meminfo->total_size = BL30_SIZE;
-	bl30_meminfo->free_base  = BL30_BASE;
-	bl30_meminfo->free_size  = BL30_SIZE;
-}
-#endif
 
 /*******************************************************************************
  * Transfer BL3-0 from Trusted RAM using the SCP Download protocol.

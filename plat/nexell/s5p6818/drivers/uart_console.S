@@ -89,26 +89,6 @@ func console_core_init
 	cbz	w1, init_fail
 	cbz	w2, init_fail
 	/* Program the baudrate */
-#if 0
-	/* Divisor =  (Uart clock * 4) / baudrate */
-	lsl	w1, w1, #2
-	udiv	w2, w1, w2
-	/* IBRD = Divisor >> 6 */
-	lsr	w1, w2, #6
-	/* Write the IBRD */
-	str	w1, [x0, #UARTIBRD]
-	/* FBRD = Divisor & 0x3F */
-	and	w1, w2, #0x3f
-	/* Write the FBRD */
-	str	w1, [x0, #UARTFBRD]
-	mov	w1, #PL011_LINE_CONTROL
-	str	w1, [x0, #UARTLCR_H]
-	/* Clear any pending errors */
-	str	wzr, [x0, #UARTECR]
-	/* Enable tx, rx, and uart overall */
-	mov	w1, #(PL011_UARTCR_RXE | PL011_UARTCR_TXE | PL011_UARTCR_UARTEN)
-	str	w1, [x0, #UARTCR]
-#endif
 	mov	w0, #1
 init_fail:
 	ret

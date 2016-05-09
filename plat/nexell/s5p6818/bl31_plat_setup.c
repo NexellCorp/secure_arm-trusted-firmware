@@ -115,16 +115,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	/* Initialize the console to provide early debug support */
 	console_init(CONSOLE_UART_BASE, NXP_UART_CLK_IN_HZ, NXP_BAUDRATE);
 
-#if 0
-	/*
-	 * Initialise the CCI-400 driver for BL31 so that it is accessible after
-	 * a warm boot. BL1 should have already enabled CCI coherency for this
-	 * cluster during cold boot.
-	 */
-	cci_init(CCI400_BASE,
-		 CCI400_SL_IFACE3_CLUSTER1_IX,
-		 CCI400_SL_IFACE4_CLUSTER0_IX);
-#else
 	/*
 	 * Initialize CCI for this cluster during cold boot.
 	 * No need for locks as no other CPU is active.
@@ -140,7 +130,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	 * clusters.
 	 */
 	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
-#endif
 
 	/*
 	 * Copy BL3-2 and BL3-3 entry point information.

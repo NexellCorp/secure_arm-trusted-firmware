@@ -36,14 +36,23 @@
 #include <cci.h>
 #include <errno.h>
 #include <gic_v2.h>
-#include <s5p6818.h>
 #include <mmio.h>
 #include <platform.h>
 #include <platform_def.h>
-#include <s5p6818_timer.h>
 #include <psci.h>
 #include <s5p6818_def.h>
 #include <s5p6818_private.h>
+#include <s5p6818_regs_sys.h>
+
+#include <nx_s5p6818.h>
+#include <nx_clkgen.h>
+#include <nx_clkpwr.h>
+#include <nx_gpio.h>
+#include <nx_i2c.h>
+#include <nx_rstcon.h>
+#include <nx_tieoff.h>
+#include <nx_wdt.h>
+
 
 static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 {
@@ -57,32 +66,38 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(linear_id));
 	mmio_write_32(ctrl_addr, data);
 
-	if (cluster)
-		while (!(mmio_read_32(NXP_TIEOFF_REG(107)) & (1 << cpu)))
-			;
-	else
-		while (!(mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu)))
-			;
+	/* wait wfi state, or power down */
+	while (!(mmio_read_32(NXP_CPU_PWR_STATUS_WFI(cluster)) & (1 << cpu)))
+		;
 
+	/* when case cpu is power up, clear power up status.
+	 * and set cpu to power down state.
+	 */
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
+
 	/* wait update of NXP_CPU_PWR_STATUS register: 10000 is loop count */
 	plat_reg_delay(10000);
-	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << (linear_id+8))))
+	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) &
+				(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(linear_id))))
 		;
 
+	/* wakeup cpu power. clear power down status before power up set */
 	regdata = mmio_read_32(NXP_CPU_PWRDOWN_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, regdata & ~(1 << linear_id));
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << linear_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
-	plat_reg_delay(10000);	/* if bus is busy, status is not updated */
-	while (mmio_read_32(NXP_CPU_PWR_STATUS) & (1 << (linear_id+8)))
+
+	plat_reg_delay(10000);
+	while (mmio_read_32(NXP_CPU_PWR_STATUS) &
+			(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(linear_id)))
 		;
 
+	/* clear power up status */
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
 
@@ -90,12 +105,8 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
 	 * Current code has implicit problem when rich os is busy
 	 * and status of new added cpu is not wfi.
 	 */
-	if (cluster)
-		while (mmio_read_32(NXP_TIEOFF_REG(107)) & (1 << cpu))
-			;
-	else
-		while (mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu))
-			;
+	while ((mmio_read_32(NXP_CPU_PWR_STATUS_WFI(cluster)) & (1 << cpu)))
+		;
 }
 
 /*******************************************************************************
@@ -192,7 +203,7 @@ static int32_t s5p6818_do_plat_actions(uint32_t afflvl, uint32_t state)
 
 	return 0;
 }
-static void s5p6818_cpu_off(uint32_t afflvl)
+static void s5p6818_cpu_off(void)
 {
 	uint32_t regdata, linear_id;
 
@@ -202,7 +213,7 @@ static void s5p6818_cpu_off(uint32_t afflvl)
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,  regdata & ~(1<< linear_id));
 	/* 
 	 * TODO afflvl 1 is need more power function. but currently skiped
-	 * if all cpu is off in same cluster, system will be corrupted
+	 * if all cpu is off in same cluster, system will be corrupted.
 	 */
 	if(linear_id & 0x3)
 		mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
@@ -223,7 +234,7 @@ static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 		/* Disable coherency if this cluster is to be turned off */
 		plat_cci_disable();
 	}else
-		s5p6818_cpu_off(afflvl);
+		s5p6818_cpu_off();
 }
 
 static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,
@@ -282,114 +293,103 @@ static void s5p6818_affinst_suspend_finish(uint32_t afflvl,
  * send nxe2000 pmic power off command through i2c port 2
  * device id:0x32, register number 0xE, register value 0x1
  */
-struct nxi2c {
-	uint32_t iccr;
-	uint32_t icsr;
-	uint32_t icar;
-	uint32_t idsr;
-	uint32_t lr;
-};
 #define NUMOFI2CPORT
 #define NXI2C_PORT      2
 #define PMIC_ID         (0x32<<1)
 #define PMIC_PWROFF     0x0E
-static uintptr_t i2cbase [NUMOFI2CPORT] =
-{
-	0xc00a4000,
-	0xc00a5000,
-	0xC00A6000
-};
-static uintptr_t i2cclkgen [NUMOFI2CPORT] =
-{
-	0xc00ae000,
-	0xc00af000,
-	0xC00B0000
-};
-static uint8_t i2crst[NUMOFI2CPORT] =
-{ 20, 21, 22};
 
 static void __dead2 s5p6818_system_off(void)
 {
 	uint32_t regvalue;
-	register struct nxi2c *I2C_BASE = (struct nxi2c *)i2cbase[NXI2C_PORT];
-	uintptr_t clkgen = i2cclkgen[NXI2C_PORT];
+	struct nx_gpio_registerset (*const pgpio)[1] =
+		(struct nx_gpio_registerset (*)[])PHY_BASEADDR_GPIOA_MODULE;
+	struct nx_rstcon_registerset *prstcon =
+		(struct nx_rstcon_registerset *)PHY_BASEADDR_RSTCON_MODULE;
+	struct nx_clkgen_registerset *pclkgen =
+		(struct nx_clkgen_registerset *)PHY_BASEADDR_CLKGEN8_MODULE;
+	struct nx_i2c_registerset *pi2c =
+		(struct nx_i2c_registerset *)PHY_BASEADDR_I2C2_MODULE;
 
-	regvalue = mmio_read_32(clkgen);
-	mmio_write_32(clkgen,
+	regvalue = mmio_read_32((uintptr_t)&pclkgen->clkenb);
+	mmio_write_32((uintptr_t)&pclkgen->clkenb,
 			regvalue | 1<<3 );      /* set i2c pclk mode*/
 
-	regvalue = mmio_read_32((uintptr_t)(GPIO_BASE+GPIO_OFFSET*3+0x20));
-	mmio_write_32((uintptr_t)(GPIO_BASE+GPIO_OFFSET*3+0x20),
+	regvalue = mmio_read_32((uintptr_t)(&pgpio[3]->gpioxaltfn[0]));
+	mmio_write_32((uintptr_t)(&pgpio[3]->gpioxaltfn[0]),
 			(regvalue & ~0xF<<(6*2)) | 5<<(6*2));   /* gpio alt1 */
 
-	regvalue = mmio_read_32((uintptr_t)DEVICE_RESET_BASE);
-	mmio_write_32((uintptr_t)DEVICE_RESET_BASE,
-			regvalue | 1<<(i2crst[NXI2C_PORT]));    /* reset off */
+	regvalue = mmio_read_32(
+			(uintptr_t)prstcon->regrst[
+				RESETINDEX_OF_I2C2_MODULE_PRESETn >> 5]);
+	mmio_write_32(
+		(uintptr_t)prstcon->regrst[
+			RESETINDEX_OF_I2C2_MODULE_PRESETn >> 5],
+		regvalue | 1<<(RESETINDEX_OF_I2C2_MODULE_PRESETn & 0x1F));
 
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+	mmio_write_32((uintptr_t)&pi2c->iccr,
 			0xF<<5 | 0xF<<0);       /* pclk/256/(15+1) */
-	mmio_write_32((uintptr_t)&I2C_BASE->lr,
+	mmio_write_32((uintptr_t)&pi2c->iclc,
 			1<<2 | 3<<0);   /* filter enable, 15 clocks delayed */
 
-	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+	mmio_write_32((uintptr_t)&pi2c->icsr,
 			3<<6 | 1<<5 | 1<<4);    /* enable tx rx */
 
-	mmio_write_32((uintptr_t)&I2C_BASE->idsr, PMIC_ID & 0xFE);
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
-	mmio_write_32((uintptr_t)&I2C_BASE->icsr, regvalue | 1<<5); /* start */
+	mmio_write_32((uintptr_t)&pi2c->idsr, PMIC_ID & 0xFE);
+	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
+	mmio_write_32((uintptr_t)&pi2c->icsr, regvalue | 1<<5); /* start */
 
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
+	mmio_write_32((uintptr_t)&pi2c->iccr,
 			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
 	/* wait int pending */
-	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+	while (!(mmio_read_32((uintptr_t)&pi2c->iccr) & 1<<4))
 		;
 
-	if(mmio_read_32((uintptr_t)&I2C_BASE->icsr) & 1<<0)
+	if (mmio_read_32((uintptr_t)&pi2c->icsr) & 1<<0)
 	{
 		VERBOSE("no device ack\r\n");
 		goto i2cexit;
 	}
 
-	mmio_write_32((uintptr_t)&I2C_BASE->idsr, PMIC_PWROFF);
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+	mmio_write_32((uintptr_t)&pi2c->idsr, PMIC_PWROFF);
+	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
+	mmio_write_32((uintptr_t)&pi2c->iccr,
 			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
 	/* wait int pending */
-	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+	while (!(mmio_read_32((uintptr_t)&pi2c->iccr) & 1<<4))
 		;
 
-	mmio_write_32((uintptr_t)&I2C_BASE->idsr, 1);
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr, regvalue & ~(1<<4));
+	mmio_write_32((uintptr_t)&pi2c->idsr, 1);
+	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
+	mmio_write_32((uintptr_t)&pi2c->iccr, regvalue & ~(1<<4));
 	/* wait int pending */
-	while(!(mmio_read_32((uintptr_t)&I2C_BASE->iccr) & 1<<4))
+	while (!(mmio_read_32((uintptr_t)&pi2c->iccr) & 1<<4))
 		;
 
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr,regvalue | (1<<4));
+	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
+	mmio_write_32((uintptr_t)&pi2c->iccr, regvalue | (1<<4));
 
-	if(mmio_read_32((uintptr_t)&I2C_BASE->icsr) & 1<<0)
+	if (mmio_read_32((uintptr_t)&pi2c->icsr) & 1<<0)
 	{
 		VERBOSE("no data ack\r\n");
 		goto i2cexit;
 	}
 
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->iccr);
-	mmio_write_32((uintptr_t)&I2C_BASE->iccr,
+	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
+	mmio_write_32((uintptr_t)&pi2c->iccr,
 			(regvalue & ~(1<<4)) | (1<<8));
 
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
-	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
+	mmio_write_32((uintptr_t)&pi2c->icsr,
 			regvalue & ~(1<<5)); /* stop */
 
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
-	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
+	mmio_write_32((uintptr_t)&pi2c->icsr,
 			regvalue & ~(1<<4));    /* enable tx rx */
 
 i2cexit:
-	regvalue = mmio_read_32((uintptr_t)&I2C_BASE->icsr);
-	mmio_write_32((uintptr_t)&I2C_BASE->icsr,
+	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
+	mmio_write_32((uintptr_t)&pi2c->icsr,
 			regvalue & ~(1<<4));    /* bus disable */
 	VERBOSE("i2c stop\r\n");
 
@@ -400,20 +400,28 @@ i2cexit:
 static void __dead2 s5p6818_system_reset(void)
 {
         uint32_t regvalue;
+	struct nx_wdt_registerset *pwdt =
+		(struct nx_wdt_registerset *)PHY_BASEADDR_WDT_MODULE;
+	struct nx_rstcon_registerset *prstcon =
+		(struct nx_rstcon_registerset *)PHY_BASEADDR_RSTCON_MODULE;
 	VERBOSE("%s: reset system\n", __func__);
 
-	regvalue = mmio_read_32(DEVICE_RESET_BASE+((DEVICE_RESET_WDT0>>5)<<2));
-	mmio_write_32(DEVICE_RESET_BASE+((DEVICE_RESET_WDT0>>5)<<2), 
-			regvalue | 3<<(DEVICE_RESET_WDT0 & (32-1)));
+	regvalue = mmio_read_32(
+			(uintptr_t)&prstcon->regrst
+				[RESETINDEX_OF_WDT_MODULE_PRESETn>>5]);
+	mmio_write_32(
+		(uintptr_t)&prstcon->regrst
+			[RESETINDEX_OF_WDT_MODULE_PRESETn>>5],
+			regvalue |
+				3<<(RESETINDEX_OF_WDT_MODULE_PRESETn & (32-1)));
 
-	regvalue =      WDT_PRE_CLK<<8 |       /* prescaler */
-		WDT_DIVFACTOR128<<3  |
-		0x1<<2;         /* watchdog reset enable */
+	regvalue =	0xff<<8 |	/* prescaler */
+		WDT_CLOCK_DIV128<<3 |
+			0x1<<2;		/* watchdog reset enable */
 
-	mmio_write_32(WDT_BASE, regvalue);
-	mmio_write_32(WDT_BASE+8, 0x1); /* reset count */
-	regvalue |= 1<<5;       /* watchdog timer enable */
-	mmio_write_32(WDT_BASE, regvalue);
+	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue);
+	mmio_write_32((uintptr_t)&pwdt->wtcnt, 0x1); /* reset count */
+	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue | 1<<5); /* now reset */
 
 	wfi();
 	panic();

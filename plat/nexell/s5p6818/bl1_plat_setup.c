@@ -36,8 +36,6 @@
 #include <console.h>
 #include <debug.h>
 #include <errno.h>
-/*#include <gpio.h>*/
-#include <s5p6818.h>
 #include <mmio.h>
 #include <partitions.h>
 #include <platform.h>
@@ -87,16 +85,6 @@ void bl1_early_platform_setup(void)
 
 	s5p6818_timer_init();
 
-#if 0
-	/*
-	 * Enable CCI-400 for this cluster. No need for locks as no other cpu is
-	 * active at the moment
-	 */
-	cci_init(CCI400_BASE,
-		 CCI400_SL_IFACE3_CLUSTER1_IX,
-		 CCI400_SL_IFACE4_CLUSTER0_IX);
-	cci_enable_cluster_coherency(read_mpidr());
-#else
 	/*
 	 * Initialize CCI for this cluster during cold boot.
 	 * No need for locks as no other CPU is active.
@@ -106,7 +94,6 @@ void bl1_early_platform_setup(void)
 	 * Enable CCI coherency for the primary CPU's cluster.
 	 */
 	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
-#endif
 
 	/* Allow BL1 to see the whole Trusted RAM */
 	bl1_tzram_layout.total_base = BL1_RW_BASE;

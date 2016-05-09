@@ -193,19 +193,6 @@
 #error "Unsupported PLAT_TSP_LOCATION_ID value"
 #endif
 
-/*******************************************************************************
- * BL3-0 specific defines:
- *
- * BL3-0 is loaded for mcu firmware, firstly load it into temperary buffer
- * into 0x0100_0000; then BL2 will parse the sections and load then into
- * separated buffers as needed.
- *
- ******************************************************************************/
-#if 0
-#define BL30_BASE			(DRAM_NS_BASE + 0x01000000)
-#define BL30_LIMIT			(DRAM_NS_BASE + 0x01100000)
-#define BL30_SIZE			(BL30_LIMIT - BL30_BASE)
-#endif
 
 /*******************************************************************************
  * Load address of BL3-3

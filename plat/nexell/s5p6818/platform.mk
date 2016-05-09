@@ -68,10 +68,10 @@ BL1_SOURCES		+=	drivers/arm/cci/cci.c				\
 				lib/cpus/aarch64/cortex_a53.S			\
 				plat/common/aarch64/platform_up_stack.S		\
 				${NEXELL_PLAT_SOC}/aarch64/bl1_plat_helpers.S	\
-				${NEXELL_PLAT_SOC}/bl1_plat_setup.c		\
-				${NEXELL_PLAT_SOC}/drivers/dw_mmc.c		\
 				${NEXELL_PLAT_SOC}/drivers/s5p6818_timer.c	\
-#				${NEXELL_PLAT_SOC}/usb.c
+				${NEXELL_PLAT_SOC}/bl1_plat_setup.c
+#				${NEXELL_PLAT_SOC}/usb.c			\
+#				${NEXELL_PLAT_SOC}/drivers/dw_mmc.c		\
 #				${NEXELL_PLAT_SOC}/pll.c			\
 #				drivers/arm/gpio/gpio.c				\
 #				${NEXELL_PLAT_SOC}/partitions.c			\

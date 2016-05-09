@@ -32,29 +32,10 @@
 #include <console.h>
 #include <debug.h>
 #include <errno.h>
-#include <s5p6818.h>
 #include <mmio.h>
+#include <nx_s5p6818.h>
 #include <s5p6818_timer.h>
 
-#define REG_TCFG0				(0x00)
-#define REG_TCFG1				(0x04)
-#define REG_TCON				(0x08)
-#define REG_TCNTB0				(0x0C)
-#define REG_TCMPB0				(0x10)
-#define REG_TCNT0				(0x14)
-#define REG_CSTAT				(0x44)
-
-#define TCON_BIT_AUTO			(1<<3)
-#define TCON_BIT_INVT			(1<<2)
-#define TCON_BIT_UP				(1<<1)
-#define TCON_BIT_RUN			(1<<0)
-#define TCFG0_BIT_CH(ch)		(ch == 0 || ch == 1 ? 0 : 8)
-#define TCFG1_BIT_CH(ch)		(ch * 4)
-#define TCON_BIT_CH(ch)			(ch ? ch * 4  + 4 : 0)
-#define TINT_CH(ch)				(ch)
-#define TINT_CSTAT_BIT_CH(ch)	(ch + 5)
-#define TINT_CSTAT_MASK			(0x1F)
-#define TIMER_TCNT_OFFS			(0xC)
 
 void loop_delay(int delay)
 {
@@ -70,42 +51,6 @@ void loop_delay(int delay)
 /* Init dual timer0 (TIMER00 & TIMER01) */
 void s5p6818_timer_init(void)
 {
-#if 0
-	unsigned int data;
-
-	/* select 32KHz as the clock of dual timer0 */
-	/* FIXME: But I find that it's 19.2MHz, not 32KHz. */
-	data = mmio_read_32(AO_SC_TIMER_EN0);
-	while (data & 3) {
-		data &= ~3;
-		data |= 3 << 16;
-		mmio_write_32(AO_SC_TIMER_EN0, data);
-		data = mmio_read_32(AO_SC_TIMER_EN0);
-	}
-	/* enable the pclk of dual timer0 */
-	data = mmio_read_32(AO_SC_PERIPH_CLKSTAT4);
-	while (!(data & PCLK_TIMER1) || !(data & PCLK_TIMER0)) {
-		mmio_write_32(AO_SC_PERIPH_CLKEN4, PCLK_TIMER1 | PCLK_TIMER0);
-		data = mmio_read_32(AO_SC_PERIPH_CLKSTAT4);
-	}
-	/* reset dual timer0 */
-	data = mmio_read_32(AO_SC_PERIPH_RSTSTAT4);
-	mmio_write_32(AO_SC_PERIPH_RSTEN4, PCLK_TIMER1 | PCLK_TIMER0);
-	do {
-		data = mmio_read_32(AO_SC_PERIPH_RSTSTAT4);
-	} while (!(data & PCLK_TIMER1) || !(data & PCLK_TIMER0));
-	/* unreset dual timer0 */
-	mmio_write_32(AO_SC_PERIPH_RSTDIS4, PCLK_TIMER1 | PCLK_TIMER0);
-	do {
-		data = mmio_read_32(AO_SC_PERIPH_RSTSTAT4);
-	} while ((data & PCLK_TIMER1) || (data & PCLK_TIMER0));
-
-	/* disable timer00 */
-	mmio_write_32(TIMER00_CONTROL, 0);
-	mmio_write_32(TIMER00_LOAD, 0xffffffff);
-	/* free running */
-	mmio_write_32(TIMER00_CONTROL, 0x82);
-#endif
 }
 
 static unsigned int get_timer_value(void)
