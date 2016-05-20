@@ -73,8 +73,7 @@ unsigned long __COHERENT_RAM_END__;
 #endif
 
 /* Data structure which holds the extents of the trusted RAM for BL2 */
-static meminfo_t bl2_tzram_layout __aligned(PLATFORM_CACHE_LINE_SIZE)
-	__attribute__((section("tzfw_coherent_mem")));
+static meminfo_t bl2_tzram_layout __aligned(PLATFORM_CACHE_LINE_SIZE);
 
 /*******************************************************************************
  * Structure which holds the arguments which need to be passed to BL3-1
@@ -178,6 +177,9 @@ void bl2_early_platform_setup(meminfo_t *mem_layout)
  * image and initialise the memory location to use for passing arguments to
  * BL3-1.
  ******************************************************************************/
+int	init_mmc(unsigned int portnum);
+int	sdmmcboot(unsigned int portnum);
+int	deinit_mmc(unsigned int portnum);
 void bl2_platform_setup(void)
 {
 	plat_security_setup();
@@ -196,6 +198,9 @@ void bl2_plat_flush_bl31_params(void)
  ******************************************************************************/
 void bl2_plat_arch_setup(void)
 {
+	INFO("bl2 tzram base: %lx, size: %lx\n",
+			bl2_tzram_layout.total_base,
+			bl2_tzram_layout.total_size);
 	plat_configure_mmu_el1(bl2_tzram_layout.total_base,
 			  bl2_tzram_layout.total_size,
 			  BL2_RO_BASE,
@@ -304,3 +309,4 @@ void bl2_plat_get_bl33_meminfo(meminfo_t *bl33_meminfo)
 	bl33_meminfo->free_base = DRAM_NS_BASE;
 	bl33_meminfo->free_size = DRAM_NS_SIZE;
 }
+

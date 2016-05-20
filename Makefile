@@ -76,6 +76,9 @@ USE_COHERENT_MEM		:= 0
 PSCI_EXTENDED_STATE_ID		:= 0
 # Default FIP file name
 FIP_NAME			:= fip.bin
+FIP_LOADER_NAME			:= fip-loader.bin
+FIP_SECURE_NAME			:= fip-secure.bin
+FIP_NONSECURE_NAME		:= fip-nonsecure.bin
 # Default FWU_FIP file name
 FWU_FIP_NAME			:= fwu_fip.bin
 # By default, use the -pedantic option in the gcc command line
@@ -186,6 +189,10 @@ CFLAGS			+=	-ffunction-sections -fdata-sections
 ifneq (${PLAT_UART_BASE},)
 CFLAGS			+=	-DPLAT_UART_BASE=${PLAT_UART_BASE}
 endif
+ifneq (${BL31_ON_SRAM},0)
+CFLAGS			+=	-DBL31_ON_SRAM
+ASFLAGS			+=	-DBL31_ON_SRAM
+endif
 
 LDFLAGS			+=	--fatal-warnings -O1
 LDFLAGS			+=	--gc-sections
@@ -247,6 +254,10 @@ CFLAGS			+=	-DPLAT_DRAM_SIZE=${PLAT_DRAM_SIZE}
 ASFLAGS			+=	-DPLAT_DRAM_SIZE=${PLAT_DRAM_SIZE}
 endif
 
+#ifneq (${PLAT_TRUST_MEM_SIZE},)
+#CFLAGS			+=	-DPLAT_TRUST_MEM_SIZE=${PLAT_TRUST_MEM_SIZE}
+#ASFLAGS			+=	-DPLAT_TRUST_MEM_SIZE=${PLAT_TRUST_MEM_SIZE}
+#endif
 
 ################################################################################
 # Include SPD Makefile if one has been specified
@@ -552,6 +563,32 @@ ${BUILD_PLAT}/${FIP_NAME}: ${FIP_DEPS} ${FIPTOOL}
 	${Q}${FIPTOOL} --dump ${FIP_ARGS} $@
 	@echo
 	@echo "Built $@ successfully"
+	@echo "${FIP_DEPS}"
+	@echo "${FIP_ARGS}"
+	@echo
+
+FIP_LOADER_DEPS += bl2
+FIP_LOADER_ARGS += --bl2 ${BUILD_PLAT}/bl2.bin
+${BUILD_PLAT}/${FIP_LOADER_NAME}: ${FIP_LOADER_DEPS} ${FIPTOOL}
+	${Q}${FIPTOOL} --dump ${FIP_LOADER_ARGS} $@
+	@echo
+	@echo "Built $@ successfully"
+	@echo
+
+FIP_SECURE_DEPS += bl31 bl32
+FIP_SECURE_ARGS += --bl31 ${BUILD_PLAT}/bl31.bin --bl32 ${BL32}
+${BUILD_PLAT}/${FIP_SECURE_NAME}: ${FIP_SECURE_DEPS} ${FIPTOOL}
+	${Q}${FIPTOOL} --dump ${FIP_SECURE_ARGS} $@
+	@echo
+	@echo "Built $@ successfully"
+	@echo
+
+FIP_NONSECURE_DEPS += check_BL33
+FIP_NONSECURE_ARGS += --bl33 ${BL33}
+${BUILD_PLAT}/${FIP_NONSECURE_NAME}: ${FIP_NONSECURE_DEPS} ${FIPTOOL}
+	${Q}${FIPTOOL} --dump ${FIP_NONSECURE_ARGS} $@
+	@echo
+	@echo "Built $@ successfully"
 	@echo
 
 ifneq (${GENERATE_COT},0)
@@ -571,6 +608,9 @@ ${BUILD_PLAT}/${FWU_FIP_NAME}: ${FWU_FIP_DEPS} ${FIPTOOL}
 
 fiptool: ${FIPTOOL}
 fip: ${BUILD_PLAT}/${FIP_NAME}
+fip-loader: ${BUILD_PLAT}/${FIP_LOADER_NAME}
+fip-secure: ${BUILD_PLAT}/${FIP_SECURE_NAME}
+fip-nonsecure: ${BUILD_PLAT}/${FIP_NONSECURE_NAME}
 fwu_fip: ${BUILD_PLAT}/${FWU_FIP_NAME}
 
 .PHONY: ${FIPTOOL}

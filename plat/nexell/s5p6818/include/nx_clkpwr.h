@@ -150,6 +150,8 @@ enum NX_CLKPWR_PLL_POWER {
 };
 
 
+unsigned int nx_clkpwr_getpllfreq(unsigned int pllnumber);
+
 #ifdef	__cplusplus
 }
 #endif

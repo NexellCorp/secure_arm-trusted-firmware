@@ -52,9 +52,9 @@
 #if DEBUG_XLAT_TABLE
 #define PLATFORM_STACK_SIZE 0x800
 #elif IMAGE_BL1
-#define PLATFORM_STACK_SIZE 0x440
+#define PLATFORM_STACK_SIZE 0x1440
 #elif IMAGE_BL2
-#define PLATFORM_STACK_SIZE 0x400
+#define PLATFORM_STACK_SIZE 0x2000
 #elif IMAGE_BL31
 #define PLATFORM_STACK_SIZE 0x800
 #elif IMAGE_BL32
@@ -72,34 +72,37 @@
 /* Firmware Image Package */
 #define FIP_IMAGE_ID			0
 
+#define FIP_LOADER_IMAGE_ID		1
+#define FIP_SECURE_IMAGE_ID		2
+#define FIP_NONSECURE_IMAGE_ID		3
 /* Trusted Boot Firmware BL2 */
-#define BL2_IMAGE_ID			1
+#define BL2_IMAGE_ID			4
 
 /* SCP Firmware BL3-0 */
-#define BL30_IMAGE_ID			2
+#define BL30_IMAGE_ID			5
 
 /* EL3 Runtime Firmware BL31 */
-#define BL31_IMAGE_ID			3
+#define BL31_IMAGE_ID			6
 
 /* Secure Payload BL32 (Trusted OS) */
-#define BL32_IMAGE_ID			4
+#define BL32_IMAGE_ID			7
 
 /* Non-Trusted Firmware BL33 */
-#define BL33_IMAGE_ID			5
+#define BL33_IMAGE_ID			8
 
 /* Certificates */
-#define BL2_CERT_ID			6
-#define TRUSTED_KEY_CERT_ID		7
+#define BL2_CERT_ID			9
+#define TRUSTED_KEY_CERT_ID		10
 
-#define BL30_KEY_CERT_ID		8
-#define BL31_KEY_CERT_ID		9
-#define BL32_KEY_CERT_ID		10
-#define BL33_KEY_CERT_ID		11
+#define BL30_KEY_CERT_ID		11
+#define BL31_KEY_CERT_ID		12
+#define BL32_KEY_CERT_ID		13
+#define BL33_KEY_CERT_ID		14
 
-#define BL30_CERT_ID			12
-#define BL31_CERT_ID			13
-#define BL32_CERT_ID			14
-#define BL33_CERT_ID			15
+#define BL30_CERT_ID			15
+#define BL31_CERT_ID			16
+#define BL32_CERT_ID			17
+#define BL33_CERT_ID			18
 
 #define BOOT_EMMC_ID			(BL33_CERT_ID + 1)
 #define NORMAL_EMMC_ID			(BL33_CERT_ID + 2)
@@ -121,21 +124,22 @@
  * Platform memory map related constants
  ******************************************************************************/
 
-/*******************************************************************************
- * BL1 is stored in XG2RAM0_HIRQ that is 784KB large. Could we use 8MB size?
- * The first part is BL1_RAM, and the second part is TZRAM. The name isn't good
- * enough. We need to update it later.
- ******************************************************************************/
 #define MMC_BASE			0x00000000
 #define MMC_SIZE			0x80000000
-#define MMC_LOADER_BASE			MMC_BASE		/* boot */
-#define MMC_BL1_SIZE			0x00200000
+#define MMC_BLOCK_SIZE			0x200		/* 512 bytes */
 
-#define ONCHIPROM_PARAM_BASE		(XG2RAM0_BASE + 0x700)
-#define LOADER_RAM_BASE			(XG2RAM0_BASE + 0x800)
-#define BL1_XG2RAM0_OFFSET		0x1000
+#define MMC_LOADER_BASE			(MMC_BASE + (0x10200))
+#define MMC_LOADER_SIZE			(0x40000-0x1000)
 
-#define DDR_BASE			0x41800000
+#define MMC_SECURE_BASE			(MMC_BASE + (0x50200))
+#define MMC_SECURE_SIZE			(0xC0000-0x1000)
+
+#define MMC_NONSECURE_BASE		(MMC_BASE + (0x110200))
+#define MMC_NONSECURE_SIZE		(0x200000-0x1000)
+
+#define BL1_ATFRAM0_OFFSET		0x1000
+
+#define DDR_BASE			0x40000000
 
 #define MMC_DESC_BASE			(DDR_BASE + 0x0080000)
 #define MMC_DESC_SIZE			0x00020000
@@ -147,8 +151,8 @@
  * BL1 RW data is relocated from ROM to RAM at runtime so we need 2 base
  * addresses.
  ******************************************************************************/
-#define BL1_RO_BASE			(XG2RAM0_BASE + BL1_XG2RAM0_OFFSET)
-#define BL1_RO_LIMIT			(XG2RAM0_BASE + 0x10000)
+#define BL1_RO_BASE			(ATFRAM0_BASE + BL1_ATFRAM0_OFFSET)
+#define BL1_RO_LIMIT			(ATFRAM0_BASE + 0x10000)
 #define BL1_RW_BASE			(BL1_RO_LIMIT)
 #define BL1_RW_SIZE			(BL1_LIMIT - BL1_RW_BASE)
 #define BL1_RW_LIMIT			(BL1_LIMIT)
@@ -157,14 +161,22 @@
  * BL2 specific defines.
  ******************************************************************************/
 /* Set it in DDR first. If necessary, we can set them into SRAM again. */
-#define BL2_BASE			(BL1_RW_BASE + 0x8000)
-#define BL2_LIMIT			(BL2_BASE + 0x40000)
+#define BL2_BASE			(ATFRAM0_BASE + 0x100000)
+#define BL2_LIMIT			(BL2_BASE + 0x80000)
 
 /*******************************************************************************
  * BL3-1 specific defines.
  ******************************************************************************/
+#ifdef BL31_ON_SRAM
+#define BL31_BASE			(0xFFFF0000)
+#define BL31_LIMIT			(0x100000000)
+
+#define BL31_PT_BASE			(BL1_LIMIT)
+#define BL31_PT_SIZE			0x6800
+#else
 #define BL31_BASE			(BL2_LIMIT)
 #define BL31_LIMIT			(BL31_BASE + 0x40000)
+#endif
 
 /*******************************************************************************
  * BL3-2 specific defines.
@@ -174,10 +186,10 @@
  * The TSP can execute either from Trusted SRAM or Trusted DRAM.
  */
 #define BL32_SRAM_BASE			BL31_LIMIT
-#define BL32_SRAM_LIMIT			(BL31_LIMIT+0x00080000)
+#define BL32_SRAM_LIMIT			0 /*(BL32_SRAM_BASE + 0x0040000)*/
 
 #define BL32_DRAM_BASE			DRAM_SEC_BASE
-#define BL32_DRAM_LIMIT			(DRAM_SEC_BASE+DRAM_SEC_SIZE)
+#define BL32_DRAM_LIMIT			(DRAM_SEC_BASE + DRAM_SEC_SIZE)
 
 #if (PLAT_TSP_LOCATION_ID == PLAT_TRUSTED_SRAM_ID)
 #define TSP_SEC_MEM_BASE		BL32_SRAM_BASE
@@ -197,7 +209,7 @@
 /*******************************************************************************
  * Load address of BL3-3
  ******************************************************************************/
-#define NS_IMAGE_OFFSET			(DRAM_BASE + 0x2400000)
+#define NS_IMAGE_OFFSET			(DRAM_BASE + 0x3C00000)
 
 /*******************************************************************************
  * Platform specific page table and MMU setup constants

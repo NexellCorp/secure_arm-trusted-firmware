@@ -80,6 +80,12 @@ BL2_SOURCES		+=	plat/common/aarch64/platform_up_stack.S		\
 				drivers/console/console.S			\
 				${NEXELL_PLAT_SOC}/bl2_plat_setup.c		\
 				${NEXELL_PLAT_SOC}/plat_security.c		\
+				${NEXELL_PLAT_SOC}/drivers/nx_rstcon.c		\
+				${NEXELL_PLAT_SOC}/drivers/nx_clkpwr.c		\
+				${NEXELL_PLAT_SOC}/drivers/dw_sd.c		\
+				${NEXELL_PLAT_SOC}/sign/bignum.c		\
+				${NEXELL_PLAT_SOC}/sign/sha256.c			\
+				${NEXELL_PLAT_SOC}/sign/rsa_verify_pss.c
 #				${NEXELL_PLAT_SOC}/drivers/dw_mmc.c		\
 				${NEXELL_PLAT_SOC}/drivers/s5p6818_timer.c
 #				${NEXELL_PLAT_SOC}/partitions.c

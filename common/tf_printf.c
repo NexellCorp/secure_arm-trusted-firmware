@@ -31,14 +31,21 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+enum PAD_PRINT {
+	PAD_ZERO	= 1<<0,
+	PAD_RIGHT	= 1<<1
+};
 /***********************************************************
  * The tf_printf implementation for all BL stages
  ***********************************************************/
-static void unsigned_num_print(unsigned long int unum, unsigned int radix)
+static void unsigned_num_print(unsigned long int unum,
+		unsigned int radix, int width, enum PAD_PRINT pad)
 {
 	/* Just need enough space to store 64 bit decimal integer */
-	unsigned char num_buf[20];
+	/* 0xffffffffffffffff = 18446 74407 37095 51615 + sign bit + last '\0' */
+	unsigned char num_buf[22];
 	int i = 0, rem;
+/*	int padchar = ' '; */
 
 	do {
 		rem = unum % radix;
@@ -78,6 +85,7 @@ void tf_printf(const char *fmt, ...)
 	int64_t num;
 	uint64_t unum;
 	char *str;
+	int width, pad;
 
 	va_start(args, fmt);
 	while (*fmt) {
@@ -85,6 +93,25 @@ void tf_printf(const char *fmt, ...)
 
 		if (*fmt == '%') {
 			fmt++;
+			width = pad = 0;
+			if (*fmt == '\0')
+				break;
+			if (*fmt == '%') {
+				putchar(*fmt++);
+				continue;
+			}
+			if (*fmt == '-') {
+				fmt++;
+				pad = PAD_RIGHT;
+			}
+			while (*fmt == '0') {
+				fmt++;
+				pad |= PAD_ZERO;
+			}
+			for ( ; *fmt >= '0' && *fmt <= '9'; ++fmt) {
+				width *= 10;
+				width += *fmt - '0';
+			}
 			/* Check the format specifier */
 loop:
 			switch (*fmt) {
@@ -101,7 +128,7 @@ loop:
 				} else
 					unum = (unsigned long int)num;
 
-				unsigned_num_print(unum, 10);
+				unsigned_num_print(unum, 10, width, pad);
 				break;
 			case 's':
 				str = va_arg(args, char *);
@@ -113,7 +140,7 @@ loop:
 				else
 					unum = va_arg(args, uint32_t);
 
-				unsigned_num_print(unum, 16);
+				unsigned_num_print(unum, 16, width, pad);
 				break;
 			case 'l':
 				bit64 = 1;
@@ -125,8 +152,10 @@ loop:
 				else
 					unum = va_arg(args, uint32_t);
 
-				unsigned_num_print(unum, 10);
+				unsigned_num_print(unum, 10, width, pad);
 				break;
+			case '0':
+
 			default:
 				/* Exit on any other format specifier */
 				goto exit;

@@ -29,6 +29,7 @@
  */
 
 #include <assert.h>
+#include <debug.h>
 #include <io_driver.h>
 #include <io_storage.h>
 #include <platform_def.h>

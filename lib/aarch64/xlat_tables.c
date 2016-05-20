@@ -43,7 +43,8 @@
 #endif
 
 #if DEBUG_XLAT_TABLE
-#define debug_print(...) printf(__VA_ARGS__)
+#include <debug.h>
+#define debug_print(...) tf_printf(__VA_ARGS__)
 #else
 #define debug_print(...) ((void)0)
 #endif
@@ -145,8 +146,10 @@ static unsigned long mmap_desc(unsigned attr, unsigned long addr_pa,
 
 	if (attr & MT_MEMORY) {
 		desc |= LOWER_ATTRS(ATTR_IWBWA_OWBWA_NTR_INDEX | ISH);
+#if 0
 		if (attr & MT_RW)
 			desc |= UPPER_ATTRS(XN);
+#endif
 	} else {
 		desc |= LOWER_ATTRS(ATTR_DEVICE_INDEX | OSH);
 		desc |= UPPER_ATTRS(XN);
@@ -155,6 +158,7 @@ static unsigned long mmap_desc(unsigned attr, unsigned long addr_pa,
 	debug_print(attr & MT_MEMORY ? "MEM" : "DEV");
 	debug_print(attr & MT_RW ? "-RW" : "-RO");
 	debug_print(attr & MT_NS ? "-NS" : "-S");
+	debug_print(desc & UPPER_ATTRS(XN) ? "-XN" : "-EX");
 
 	return desc;
 }

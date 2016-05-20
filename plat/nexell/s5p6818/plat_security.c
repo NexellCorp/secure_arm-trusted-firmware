@@ -101,12 +101,12 @@ struct rgn_attr_reg {
 
 const unsigned short tzpc_r0size[TZPC_GROUPNUM_MAX] = {
 	TZPC_R0SIZE_NONE,  /* size of secure mode management area of sram */
-	TZPC_R0SIZE_32KB,  /* GIC400, */
-	TZPC_R0SIZE_4KB,
-	TZPC_R0SIZE_4KB,
-	TZPC_R0SIZE_4KB,
-	TZPC_R0SIZE_4KB,
-	TZPC_R0SIZE_4KB
+	TZPC_R0SIZE_4KB,  /* GIC400, */
+	TZPC_R0SIZE_NONE,
+	TZPC_R0SIZE_NONE,
+	TZPC_R0SIZE_NONE,
+	TZPC_R0SIZE_NONE,
+	TZPC_R0SIZE_NONE
 };
 
 struct tzpc_prot_bit {

@@ -37,6 +37,9 @@
 #include <io_storage.h>
 #include <platform_def.h>
 #include <string.h>
+#include <s5p6818_def.h>
+#include <nx_sdmmc.h>
+#include <nx_bootheader.h>
 
 /* IO devices */
 static const io_dev_connector_t *fip_dev_con;
@@ -44,11 +47,18 @@ static uintptr_t fip_dev_handle;
 static const io_dev_connector_t *memmap_dev_con;
 static uintptr_t memmap_dev_handle;
 
-static const io_block_spec_t fip_block_spec = {
-	.offset = FLASH_BASE,
-	.length = FLASH_SIZE
+static const io_block_spec_t fip_loader_block_spec = {
+	.offset = FLASH_LOADER_BASE + 1024,	/* need boot header area */
+	.length = FLASH_LOADER_SIZE - 1024
 };
-
+static const io_block_spec_t fip_secure_block_spec = {
+	.offset = FLASH_SECURE_BASE,
+	.length = FLASH_SECURE_SIZE
+};
+static const io_block_spec_t fip_nonsecure_block_spec = {
+	.offset = FLASH_NONSECURE_BASE,
+	.length = FLASH_NONSECURE_SIZE
+};
 static const io_uuid_spec_t bl2_uuid_spec = {
 	.uuid = UUID_TRUSTED_BOOT_FIRMWARE_BL2,
 };
@@ -113,6 +123,9 @@ static const io_uuid_spec_t bl33_cert_uuid_spec = {
 
 
 static int open_fip(const uintptr_t spec);
+static int open_loader_fip(const uintptr_t spec);
+static int open_secure_fip(const uintptr_t spec);
+static int open_nonsecure_fip(const uintptr_t spec);
 static int open_memmap(const uintptr_t spec);
 
 struct plat_io_policy {
@@ -125,13 +138,28 @@ struct plat_io_policy {
 static const struct plat_io_policy policies[] = {
 	[FIP_IMAGE_ID] = {
 		&memmap_dev_handle,
-		(uintptr_t)&fip_block_spec,
+		(uintptr_t)0,
+		open_memmap
+	},
+	[FIP_LOADER_IMAGE_ID] = {
+		&memmap_dev_handle,
+		(uintptr_t)&fip_loader_block_spec,
+		open_memmap
+	},
+	[FIP_SECURE_IMAGE_ID] = {
+		&memmap_dev_handle,
+		(uintptr_t)&fip_secure_block_spec,
+		open_memmap
+	},
+	[FIP_NONSECURE_IMAGE_ID] = {
+		&memmap_dev_handle,
+		(uintptr_t)&fip_nonsecure_block_spec,
 		open_memmap
 	},
 	[BL2_IMAGE_ID] = {
 		&fip_dev_handle,
 		(uintptr_t)&bl2_uuid_spec,
-		open_fip
+		open_loader_fip
 	},
 	[BL30_IMAGE_ID] = {
 		&fip_dev_handle,
@@ -141,17 +169,17 @@ static const struct plat_io_policy policies[] = {
 	[BL31_IMAGE_ID] = {
 		&fip_dev_handle,
 		(uintptr_t)&bl31_uuid_spec,
-		open_fip
+		open_secure_fip
 	},
 	[BL32_IMAGE_ID] = {
 		&fip_dev_handle,
 		(uintptr_t)&bl32_uuid_spec,
-		open_fip
+		open_secure_fip
 	},
 	[BL33_IMAGE_ID] = {
 		&fip_dev_handle,
 		(uintptr_t)&bl33_uuid_spec,
-		open_fip
+		open_nonsecure_fip
 	},
 #if TRUSTED_BOARD_BOOT
 	[BL2_CERT_ID] = {
@@ -224,7 +252,55 @@ static int open_fip(const uintptr_t spec)
 	}
 	return result;
 }
+static int open_loader_fip(const uintptr_t spec)
+{
+	int result;
+	uintptr_t local_image_handle;
 
+	/* See if a Firmware Image Package is available */
+	result = io_dev_init(fip_dev_handle, (uintptr_t)FIP_LOADER_IMAGE_ID);
+	if (result == 0) {
+		result = io_open(fip_dev_handle, spec, &local_image_handle);
+		if (result == 0) {
+			VERBOSE("Using FIP\n");
+			io_close(local_image_handle);
+		}
+	}
+	return result;
+}
+
+static int open_secure_fip(const uintptr_t spec)
+{
+	int result;
+	uintptr_t local_image_handle;
+
+	/* See if a Firmware Image Package is available */
+	result = io_dev_init(fip_dev_handle, (uintptr_t)FIP_SECURE_IMAGE_ID);
+	if (result == 0) {
+		result = io_open(fip_dev_handle, spec, &local_image_handle);
+		if (result == 0) {
+			VERBOSE("Using FIP\n");
+			io_close(local_image_handle);
+		}
+	}
+	return result;
+}
+static int open_nonsecure_fip(const uintptr_t spec)
+{
+	int result;
+	uintptr_t local_image_handle;
+
+	/* See if a Firmware Image Package is available */
+	result = io_dev_init(fip_dev_handle, (uintptr_t)FIP_NONSECURE_IMAGE_ID);
+	if (result == 0) {
+		result = io_open(fip_dev_handle, spec, &local_image_handle);
+		if (result == 0) {
+			VERBOSE("Using FIP\n");
+			io_close(local_image_handle);
+		}
+	}
+	return result;
+}
 
 static int open_memmap(const uintptr_t spec)
 {
@@ -245,6 +321,9 @@ static int open_memmap(const uintptr_t spec)
 void plat_io_setup(void)
 {
 	int io_result;
+#if IMAGE_BL2
+	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
+#endif
 
 	/* Register the IO devices on this platform */
 	io_result = register_io_dev_fip(&fip_dev_con);
@@ -264,6 +343,9 @@ void plat_io_setup(void)
 
 	/* Ignore improbable errors in release builds */
 	(void)io_result;
+#if IMAGE_BL2
+	init_mmc(cbh->tbbi.dbi[0].sdmmcbi.portnumber);
+#endif
 }
 
 
@@ -298,4 +380,46 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 	}
 
 	return result;
+}
+
+int readimage(unsigned char *bootheaderptr, unsigned char *bootimageptr);
+int plat_load_secureimage(void)
+{
+	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
+	struct nx_bootheader bh;
+
+
+	VERBOSE("load secure boot header\n");
+	load_mmc(cbh->tbbi.dbi[0].sdmmcbi.portnumber,
+			cbh->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
+			2, (void*)&bh);
+
+	VERBOSE("load secure boot image:%d\n", bh.tbbi.loadsize);
+	load_mmc(cbh->tbbi.dbi[0].sdmmcbi.portnumber,
+			cbh->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
+			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
+			(void*)bh.tbbi.loadaddr);
+
+	return readimage((unsigned char *)&bh,
+			(unsigned char *)bh.tbbi.loadaddr);
+}
+
+int plat_load_nonsecure_bootloader(void)
+{
+	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
+	struct nx_bootheader bh;
+
+	VERBOSE("load nonsecure boot header\n");
+	load_mmc(cbh->tbbi.dbi[1].sdmmcbi.portnumber,
+			cbh->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
+			2, (void*)&bh);
+
+	VERBOSE("load nonsecure boot image:%d\n", bh.tbbi.loadsize);
+	load_mmc(cbh->tbbi.dbi[1].sdmmcbi.portnumber,
+			cbh->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
+			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
+			(void*)bh.tbbi.loadaddr);
+
+	return readimage((unsigned char *)&bh,
+			(unsigned char *)bh.tbbi.loadaddr);
 }

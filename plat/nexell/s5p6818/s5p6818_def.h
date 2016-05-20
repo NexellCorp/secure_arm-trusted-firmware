@@ -38,40 +38,41 @@
 /*******************************************************************************
  * Nexell memory map related constants
  ******************************************************************************/
-/*
- * S5P6818 DRAM memory layout
- * +-----------------------------+ 0x40000000 + DRAM_SIZE
- * | ARM Trusted Firmware        |
- * +----------------------(24MB)-+
- * |        FIP save image       |
- * +-----------------------------+ 0x40000000 + DRAM_SIZE - 2MB
- * |                             |
- * |   Normal Memory             |
- * |                             |
- * +-----------------------------+ 0x40000000
- *
- *  * FIP will be removed as the loader reads direct from storage.
- */
-#define FLASH_BASE			0x40000000
-#define FLASH_SIZE			0x01800000
+/* hardware dependency */
+#define DEVICE_SD	0
+#define DEVICE_MMC	2
 
 /* The size of DRAM is 1GB as default. */
-#define XG2RAM0_SIZE			0x200000
-#define DRAM_BASE			0x41800000
+/*unused: #define ATFRAM0_SIZE			0x200000*/
+#define DRAM_BASE			0x40000000
 
 #if defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 2048
-#define XG2RAM0_BASE			0xbfe00000
-#define DRAM_SIZE			0x7e600000UL
-#define BL1_LIMIT			0xbfe98000
+#define ATFRAM0_BASE			0xbfe00000
+#define DRAM_SIZE			0x7fb00000UL
+#define BL1_LIMIT			0xbfff8000
+#define OFFSET_FIXUP			0x80000000
 #elif defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 512
-#define XG2RAM0_BASE			0x5fe00000
-#define DRAM_SIZE			0x1e600000UL
-#define BL1_LIMIT			0x5fe98000
+#define ATFRAM0_BASE			0x5fe00000
+#define DRAM_SIZE			0x1fb00000UL
+#define BL1_LIMIT			0x5fff8000
+#define OFFSET_FIXUP			0x20000000
 #else
-#define XG2RAM0_BASE			0x7fe00000
-#define DRAM_SIZE			0x3e600000UL
-#define BL1_LIMIT			0x7fe98000
+#define ATFRAM0_BASE			0x7fe00000
+#define DRAM_SIZE			0x3fb00000UL
+#define BL1_LIMIT			0x7fff8000
+#define OFFSET_FIXUP			0x40000000
 #endif /* PLAT_DRAM_SIZE */
+
+#define FLASH_LOADER_BASE		(OFFSET_FIXUP + 0x3fdce000)
+#define FLASH_LOADER_SIZE		0x00042000
+
+#define FLASH_SECURE_BASE		(OFFSET_FIXUP + 0x3fd00000)
+#define FLASH_SECURE_SIZE		0x000c0000
+
+#define FLASH_NONSECURE_BASE		(OFFSET_FIXUP + 0x3fb00000)
+#define FLASH_NONSECURE_SIZE		0x00200000
+
+
 
 #define PLAT_TRUSTED_SRAM_ID		0
 #define PLAT_TRUSTED_DRAM_ID		1
@@ -81,7 +82,7 @@
  *   - Secure DRAM (default is the top 16MB)
  *   - Non-Secure DRAM (remaining DRAM starting at DRAM_BASE)
  */
-#define DRAM_SEC_SIZE			0x01000000
+#define DRAM_SEC_SIZE			0x02000000
 #define DRAM_SEC_BASE			(DRAM_BASE + DRAM_SIZE - DRAM_SEC_SIZE)
 
 #define DRAM_NS_BASE			DRAM_BASE
@@ -147,4 +148,6 @@
 #define CCI_CLUSTER0_SL_IFACE_IX	4
 #define CCI_CLUSTER1_SL_IFACE_IX	3
 #endif
+
+
 #endif /* __S5P6818_DEF_H__ */

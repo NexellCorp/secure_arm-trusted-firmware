@@ -228,6 +228,9 @@ int32_t opteed_setup(void)
 	} else if (is_mem_free(BL32_DRAM_BASE,
 			       BL32_DRAM_LIMIT - BL32_DRAM_BASE,
 			       init_load_addr, init_mem_usage)) {
+
+		NOTICE("free %lx size %lx\n", BL32_DRAM_BASE, BL32_DRAM_LIMIT - BL32_DRAM_BASE);
+		NOTICE("init %lx size %lx\n", init_load_addr, init_mem_usage);
 		/*
 		 * Running in DRAM.
 		 *

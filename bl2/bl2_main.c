@@ -38,7 +38,9 @@
 #include <errno.h>
 #include <platform.h>
 #include <platform_def.h>
+#include <nx_plat_def.h>
 #include <stdint.h>
+#include <string.h>
 #include "bl2_private.h"
 
 /*
@@ -101,7 +103,11 @@ static int load_scp_bl2(void)
 static int load_bl31(bl31_params_t *bl2_to_bl31_params,
 		     entry_point_info_t *bl31_ep_info)
 {
+#if PLAT == s5p6818 && defined(BL31_ON_SRAM)
+	meminfo_t bl2_tzram_layout;
+#else
 	meminfo_t *bl2_tzram_layout;
+#endif
 	int e;
 
 	INFO("BL2: Loading BL31\n");
@@ -109,17 +115,32 @@ static int load_bl31(bl31_params_t *bl2_to_bl31_params,
 	assert(bl31_ep_info != NULL);
 
 	/* Find out how much free trusted ram remains after BL2 load */
+#if PLAT == s5p6818 && defined(BL31_ON_SRAM)
+	bl2_tzram_layout.total_base = BL31_BASE;
+	bl2_tzram_layout.total_size = BL31_LIMIT - BL31_BASE;
+	bl2_tzram_layout.free_base  = BL31_BASE;
+	bl2_tzram_layout.free_size  = BL31_LIMIT - BL31_BASE;
+#else
 	bl2_tzram_layout = bl2_plat_sec_mem_layout();
+#endif
 
 	/* Set the X0 parameter to BL31 */
 	bl31_ep_info->args.arg0 = (unsigned long)bl2_to_bl31_params;
 
 	/* Load the BL31 image */
+#if PLAT == s5p6818 && defined(BL31_ON_SRAM)
+	e = load_auth_image(&bl2_tzram_layout,
+			    BL31_IMAGE_ID,
+			    BL31_BASE,
+			    bl2_to_bl31_params->bl31_image_info,
+			    bl31_ep_info);
+#else
 	e = load_auth_image(bl2_tzram_layout,
 			    BL31_IMAGE_ID,
 			    BL31_BASE,
 			    bl2_to_bl31_params->bl31_image_info,
 			    bl31_ep_info);
+#endif
 
 	if (e == 0) {
 		bl2_plat_set_bl31_ep_info(bl2_to_bl31_params->bl31_image_info,
@@ -258,6 +279,19 @@ void bl2_main(void)
 	bl31_ep_info->args.arg0 = (unsigned long) bl2_to_bl31_params;
 	bl2_plat_set_bl31_ep_info(NULL, bl31_ep_info);
 #else
+#ifdef PLAT_s5p6818
+	e = plat_load_secureimage();
+	if (e) {
+		ERROR("Failed to load secure image (%i)\n", e);
+		plat_error_handler(e);
+	}
+
+	e = plat_load_nonsecure_bootloader();
+	if (e) {
+		ERROR("Failed to load non-secure image (%i)\n", e);
+		plat_error_handler(e);
+	}
+#endif
 	e = load_bl31(bl2_to_bl31_params, bl31_ep_info);
 	if (e) {
 		ERROR("Failed to load BL31 (%i)\n", e);

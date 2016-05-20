@@ -41,9 +41,17 @@
 #include <xlat_tables.h>
 #include <s5p6818_def.h>
 
-#define MAP_FLASH	MAP_REGION_FLAT(FLASH_BASE,			\
-					FLASH_SIZE,			\
+#define MAP_LOADER_FLASH	MAP_REGION_FLAT(FLASH_LOADER_BASE,	\
+					FLASH_LOADER_SIZE,		\
 					MT_MEMORY | MT_RO | MT_SECURE)
+
+#define MAP_SECURE_FLASH	MAP_REGION_FLAT(FLASH_SECURE_BASE,	\
+					FLASH_SECURE_SIZE,		\
+					MT_MEMORY | MT_RW | MT_SECURE)
+
+#define MAP_NONSECURE_FLASH	MAP_REGION_FLAT(FLASH_NONSECURE_BASE,	\
+					FLASH_NONSECURE_SIZE,		\
+					MT_MEMORY | MT_RW | MT_NS)
 
 #define MAP_DEVICE	MAP_REGION_FLAT(DEVICE_BASE,			\
 					DEVICE_SIZE,			\
@@ -53,17 +61,27 @@
 					DRAM_NS_SIZE,			\
 					MT_DEVICE | MT_RW | MT_NS)
 
+#define MAP_SEC_MEM	MAP_REGION_FLAT(DRAM_SEC_BASE,			\
+					DRAM_SEC_SIZE,			\
+					MT_MEMORY | MT_RW | MT_SECURE)
+
 #define MAP_TSP_MEM	MAP_REGION_FLAT(TSP_SEC_MEM_BASE,		\
 					TSP_SEC_MEM_SIZE,		\
 					MT_MEMORY | MT_RW | MT_SECURE)
 
-#define MAP_ROM_PARAM	MAP_REGION_FLAT(XG2RAM0_BASE,			\
-					0x1000,				\
-					MT_DEVICE | MT_RW | MT_NS)
+#define MAP_ROM_PARAM	MAP_REGION_FLAT(ATFRAM0_BASE,			\
+					0x200000,			\
+					MT_MEMORY | MT_RW | MT_SECURE)
 
 #define MAP_SRAM	MAP_REGION_FLAT(SRAM_BASE,			\
 					SRAM_SIZE,			\
-					MT_DEVICE | MT_RW | MT_SECURE)
+					MT_MEMORY | MT_RW | MT_SECURE)
+
+#ifdef BL31_ON_SRAM
+#define MAP_BL31_XLAT	MAP_REGION_FLAT(BL31_PT_BASE,			\
+					BL31_PT_SIZE,			\
+					MT_MEMORY | MT_RW | MT_SECURE)
+#endif
 
 /*
  * Table of regions for different BL stages to map using the MMU.
@@ -72,20 +90,27 @@
  */
 #if IMAGE_BL1
 static const mmap_region_t s5p6818_mmap[] = {
-	MAP_FLASH,
+	MAP_LOADER_FLASH,
 	MAP_DEVICE,
 	MAP_NS_DRAM,
+	MAP_SEC_MEM,
 	MAP_ROM_PARAM,
+	MAP_SRAM,
 	{0}
 };
 #endif
 #if IMAGE_BL2
 static const mmap_region_t s5p6818_mmap[] = {
-	MAP_FLASH,
+	MAP_LOADER_FLASH,
+	MAP_SECURE_FLASH,
+	MAP_NONSECURE_FLASH,
 	MAP_DEVICE,
 	MAP_NS_DRAM,
-	MAP_TSP_MEM,
+	MAP_SEC_MEM,
 	MAP_SRAM,
+#ifdef BL31_ON_SRAM
+	MAP_BL31_XLAT,
+#endif
 	{0}
 };
 #endif
@@ -94,6 +119,11 @@ static const mmap_region_t s5p6818_mmap[] = {
 	MAP_DEVICE,
 	MAP_NS_DRAM,
 	MAP_TSP_MEM,
+#ifdef BL31_ON_SRAM
+	MAP_SEC_MEM,
+	MAP_SRAM,
+	MAP_BL31_XLAT,
+#endif
 	{0}
 };
 #endif
@@ -101,6 +131,7 @@ static const mmap_region_t s5p6818_mmap[] = {
 static const mmap_region_t s5p6818_mmap[] = {
 	MAP_DEVICE,
 	MAP_NS_DRAM,
+	MAP_TSP_MEM,
 	{0}
 };
 #endif
@@ -161,13 +192,13 @@ static const int s5p6818_cci_map[] = {
 					  unsigned long ro_start,	\
 					  unsigned long ro_limit)	\
 	{								\
+		mmap_add(s5p6818_mmap);					\
 		mmap_add_region(total_base, total_base,			\
 				total_size,				\
 				MT_MEMORY | MT_RW | MT_SECURE);		\
 		mmap_add_region(ro_start, ro_start,			\
 				ro_limit - ro_start,			\
 				MT_MEMORY | MT_RO | MT_SECURE);		\
-		mmap_add(s5p6818_mmap);				\
 		init_xlat_tables();					\
 									\
 		enable_mmu_el##_el(0);					\
