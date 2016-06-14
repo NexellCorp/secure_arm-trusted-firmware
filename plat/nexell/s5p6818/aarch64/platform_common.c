@@ -78,8 +78,8 @@
 					MT_MEMORY | MT_RW | MT_SECURE)
 
 #ifdef BL31_ON_SRAM
-#define MAP_BL31_XLAT	MAP_REGION_FLAT(BL31_PT_BASE,			\
-					BL31_PT_SIZE,			\
+#define MAP_BL31_DRAM	MAP_REGION_FLAT(BL31_DRAM_BASE,			\
+					BL31_DRAM_SIZE,			\
 					MT_MEMORY | MT_RW | MT_SECURE)
 #endif
 
@@ -109,7 +109,7 @@ static const mmap_region_t s5p6818_mmap[] = {
 	MAP_SEC_MEM,
 	MAP_SRAM,
 #ifdef BL31_ON_SRAM
-	MAP_BL31_XLAT,
+	MAP_BL31_DRAM,
 #endif
 	{0}
 };
@@ -122,7 +122,7 @@ static const mmap_region_t s5p6818_mmap[] = {
 #ifdef BL31_ON_SRAM
 	MAP_SEC_MEM,
 	MAP_SRAM,
-	MAP_BL31_XLAT,
+	MAP_BL31_DRAM,
 #endif
 	{0}
 };

@@ -80,7 +80,11 @@ __attribute__ ((section("tzfw_coherent_mem")))
 
 DEFINE_BAKERY_LOCK(psci_locks[PSCI_NUM_NON_CPU_PWR_DOMAINS]);
 
+#ifdef IMAGE_BL31
+cpu_pd_node_t psci_cpu_pd_nodes[PLATFORM_CORE_COUNT] __attribute__((__section__(".excl")));
+#else
 cpu_pd_node_t psci_cpu_pd_nodes[PLATFORM_CORE_COUNT];
+#endif
 
 /*******************************************************************************
  * Pointer to functions exported by the platform to complete power mgmt. ops

@@ -171,8 +171,8 @@
 #define BL31_BASE			(0xFFFF0000)
 #define BL31_LIMIT			(0x100000000)
 
-#define BL31_PT_BASE			(BL1_LIMIT)
-#define BL31_PT_SIZE			0x6800
+#define BL31_DRAM_BASE			(BL1_LIMIT)
+#define BL31_DRAM_SIZE			0x5000
 #else
 #define BL31_BASE			(BL2_LIMIT)
 #define BL31_LIMIT			(BL31_BASE + 0x40000)

@@ -38,7 +38,7 @@ ENTRY(bl31_entrypoint)
 MEMORY {
     RAM (rwx): ORIGIN = BL31_BASE, LENGTH = BL31_LIMIT - BL31_BASE
 #if (PLAT == s5p6818) && defined(BL31_ON_SRAM)
-    DRAM (rwx): ORIGIN = BL31_PT_BASE, LENGTH = BL31_PT_SIZE
+    DRAM (rwx): ORIGIN = BL31_DRAM_BASE, LENGTH = BL31_DRAM_SIZE
 #endif
 }
 
@@ -198,12 +198,16 @@ SECTIONS
      * Removing them from .bss avoids forcing 4K alignment on
      * the .bss section and eliminates the unecessary zero init
      */
-    . = BL31_PT_BASE;
+    . = BL31_DRAM_BASE;
 
     xlat_table (NOLOAD) : {
 	__XLAT_TABLES_START__ = .;
         *(xlat_table)
 	__XLAT_TABLES_END__ = .;
+    } >DRAM
+
+    excl (NOLOAD) : ALIGN(8) {
+        *(.excl)
     } >DRAM
 #endif
 }
