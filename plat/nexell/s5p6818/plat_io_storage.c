@@ -382,7 +382,7 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 	return result;
 }
 
-int readimage(unsigned char *bootheaderptr, unsigned char *bootimageptr);
+int readimage(unsigned char *bh, unsigned char *cbh, unsigned char *bootimage);
 int plat_load_secureimage(void)
 {
 	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
@@ -399,9 +399,12 @@ int plat_load_secureimage(void)
 			cbh->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
 			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
 			(void*)bh.tbbi.loadaddr);
-
-	return readimage((unsigned char *)&bh,
+#ifdef SECURE_ON
+	return readimage((unsigned char *)&bh, (unsigned char *)cbh,
 			(unsigned char *)bh.tbbi.loadaddr);
+#else
+	return 0;
+#endif
 }
 
 int plat_load_nonsecure_bootloader(void)
@@ -420,6 +423,10 @@ int plat_load_nonsecure_bootloader(void)
 			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
 			(void*)bh.tbbi.loadaddr);
 
-	return readimage((unsigned char *)&bh,
+#ifdef SECURE_ON
+	return readimage((unsigned char *)&bh, (unsigned char *)cbh,
 			(unsigned char *)bh.tbbi.loadaddr);
+#else
+	return 0;
+#endif
 }

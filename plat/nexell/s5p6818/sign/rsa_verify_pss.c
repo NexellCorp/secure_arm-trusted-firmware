@@ -358,20 +358,23 @@ exit:
 	return (ret);
 }
 
-int readimage(unsigned char *bootheaderptr, unsigned char *bootimageptr)
+int readimage(unsigned char *signbootheaderptr,
+		unsigned char *pkeybootheaderptr,
+		unsigned char *bootimageptr)
 {
 	int ret;
 	unsigned char *buf;
 	void *pub;
 	unsigned char hash[32];
-	struct nx_bootheader *bh = (struct nx_bootheader *)bootheaderptr;
+	struct nx_bootheader *sbh = (struct nx_bootheader *)signbootheaderptr;
+	struct nx_bootheader *kbh = (struct nx_bootheader *)pkeybootheaderptr;
 
 	memallocpool = (size_t)mempool;	
 	
-	buf = bh->rsa_public.rsaencryptedsha256hash;
-	pub = bh->rsa_public.rsapublickey;
+	buf = sbh->rsa_public.rsaencryptedsha256hash;
+	pub = kbh->rsa_public.rsapublickey;
 	
-	get_hash(bootimageptr, bh->tbbi.loadsize, hash);
+	get_hash(bootimageptr, sbh->tbbi.loadsize, hash);
 
 	if ((ret = verify_image(buf, &pub, hash)) == 0)
 		NOTICE("\n  . OK (the signature is valid)\n\n");
