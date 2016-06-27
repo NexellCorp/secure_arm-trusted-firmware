@@ -115,7 +115,8 @@ const unsigned int irq_sec_array[] = {
 	IRQ_SEC_SGI_4,
 	IRQ_SEC_SGI_5,
 	IRQ_SEC_SGI_6,
-	IRQ_SEC_SGI_7
+	IRQ_SEC_SGI_7,
+	IRQ_SEC_SGI_8
 };
 
 const unsigned int num_sec_irqs = sizeof(irq_sec_array) /

@@ -36,6 +36,7 @@
 #include <runtime_svc.h>
 
 	.globl	runtime_exceptions
+	.globl	check_user_req_handler
 
 	/* -----------------------------------------------------
 	 * Handle SMC exceptions separately from other sync.
@@ -91,6 +92,10 @@
 	mov	x20, sp
 	msr	spsel, #0
 	mov	sp, x2
+
+	bl	check_user_req_handler
+	cmp	x0, #0
+	b.ne	interrupt_exit_\label
 
 	/*
 	 * Find out whether this is a valid interrupt type. If the

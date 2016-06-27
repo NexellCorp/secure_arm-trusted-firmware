@@ -31,6 +31,7 @@
 #include <arch_helpers.h>
 #include <arm_gic.h>
 #include <assert.h>
+#include <spinlock.h>
 #include <cci.h>
 #include <debug.h>
 #include <cci.h>
@@ -53,60 +54,135 @@
 #include <nx_tieoff.h>
 #include <nx_wdt.h>
 
+unsigned int targetcpu_id_bitfield;
+unsigned char cpulock[8];
+spinlock_t cpusl;
 
-static void s5p6818_power_on_cpu(int cluster, int cpu, int linear_id)
+unsigned int check_user_req_handler(void)
+{
+	int my_id = plat_my_core_pos();
+	unsigned int id = gicd_read_spendsgir(GICD_BASE, IRQ_SEC_SGI_8);
+
+	if (id != 0) {
+		gicd_write_cpendsgir(GICD_BASE, IRQ_SEC_SGI_8, id);
+		cpulock[my_id] = 1;
+
+		if (targetcpu_id_bitfield & 1 << my_id) {
+			spin_lock(&cpusl);
+			spin_unlock(&cpusl);
+		}
+		cpulock[my_id] = 0;
+		return id;
+	}
+	return 0;
+}
+static void s5p6818_getcpuidle(unsigned int int_num, unsigned int target_cpu)
+{
+	gicd_write_sgir(GICD_BASE,
+			0x0 << 24 | target_cpu << 16 | int_num << 0);
+}
+
+static void s5p6818_waitcpuidle(unsigned int target_id)
+{
+	unsigned int cluster0, cluster1;
+	unsigned int status0, status1;
+	int my_id = plat_my_core_pos();
+	unsigned int pwrstatus = mmio_read_32(NXP_CPU_PWR_STATUS);
+
+	cluster0 = ~(pwrstatus >> 8) & 0xf;
+	cluster1 = ~(pwrstatus >> 12) & 0xf;
+
+	if (my_id >= 4)
+		cluster1 &= ~(1 << (my_id - 4));
+	else
+		cluster0 &= ~(1 << my_id);
+
+	if (target_id >= 4)
+		cluster1 &= ~(1 << (target_id - 4));
+	else
+		cluster0 &= ~(1 << target_id);
+
+	targetcpu_id_bitfield = cluster0 | cluster1 << 4;
+
+	/* wait wfi state, or power down */
+	do {
+		status0 = mmio_read_32(NXP_CPU_PWR_STATUS_WFI(0));
+		status0 |= (status0 >> 5);
+		status0 &= 0xf;
+		status0 &= cluster0;
+	} while (status0 != cluster0);
+	do {
+		status1 = mmio_read_32(NXP_CPU_PWR_STATUS_WFI(1));
+		status1 |= (status1 >> 5);
+		status1 &= 0xf;
+		status1 &= cluster1;
+	} while (status1 != cluster1);
+	VERBOSE("wait: %d, %d, %x, %x\n", my_id, target_id,
+			status0 | status1<<4, cluster0 | cluster1<<4);
+}
+
+static void s5p6818_power_on_cpu(int cluster, int cpu, int target_id)
 {
 	unsigned int ctrl_addr;
 	unsigned int data, regdata;
+	int my_id = plat_my_core_pos();
+	unsigned int pwrstatus = ~(mmio_read_32(NXP_CPU_PWR_STATUS) >> 8)
+					& 0xff;
 
 	/* Set arm64 mode */
-	ctrl_addr = NXP_CPU_CLUSTERx_CTRL(linear_id);
+	ctrl_addr = NXP_CPU_CLUSTERx_CTRL(target_id);
 
 	data  = mmio_read_32(ctrl_addr);
-	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(linear_id));
+	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(target_id));
 	mmio_write_32(ctrl_addr, data);
 
-	/* wait wfi state, or power down */
-	while (!(mmio_read_32(NXP_CPU_PWR_STATUS_WFI(cluster)) & (1 << cpu)))
-		;
+	targetcpu_id_bitfield = pwrstatus & ~(1 << my_id | 1 << target_id);
+	spin_lock(&cpusl);
+
+	s5p6818_getcpuidle(IRQ_SEC_SGI_8,
+			pwrstatus & ~(1<<my_id | 1<<target_id));
+
+	plat_reg_delay(10000);
+	s5p6818_waitcpuidle(target_id);
 
 	/* when case cpu is power up, clear power up status.
 	 * and set cpu to power down state.
 	 */
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
-	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << target_id));
+	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << target_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
 
 	/* wait update of NXP_CPU_PWR_STATUS register: 10000 is loop count */
 	plat_reg_delay(10000);
 	while (!(mmio_read_32(NXP_CPU_PWR_STATUS) &
-				(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(linear_id))))
+				(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(target_id))))
 		;
 
 	/* wakeup cpu power. clear power down status before power up set */
 	regdata = mmio_read_32(NXP_CPU_PWRDOWN_REQ_CTRL);
-	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, regdata & ~(1 << linear_id));
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << linear_id));
+	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, regdata & ~(1 << target_id));
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << target_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
 
 	plat_reg_delay(10000);
 	while (mmio_read_32(NXP_CPU_PWR_STATUS) &
-			(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(linear_id)))
+			(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(target_id)))
 		;
 
 	/* clear power up status */
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
+	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << target_id));
 
-	/* TODO: need workaround code.
-	 * Current code has implicit problem when rich os is busy
-	 * and status of new added cpu is not wfi.
-	 */
-	while ((mmio_read_32(NXP_CPU_PWR_STATUS_WFI(cluster)) & (1 << cpu)))
-		;
+	/* wait wfi state, or power down */
+	plat_reg_delay(10000);
+	s5p6818_waitcpuidle(target_id);
+
+	targetcpu_id_bitfield = 0;
+
+	spin_unlock(&cpusl);
 }
 
 /*******************************************************************************
@@ -162,6 +238,7 @@ void s5p6818_affinst_on_finish(uint32_t afflvl, uint32_t state)
 
 	/* Get the mpidr for this cpu */
 	linear_id = plat_my_core_pos();
+	VERBOSE("cpu%d power up\n", linear_id);
 
 	/*
 	 * Perform the common cluster specific operations i.e enable coherency
@@ -175,6 +252,7 @@ void s5p6818_affinst_on_finish(uint32_t afflvl, uint32_t state)
 	/* Cleanup cpu entry point */
 	mmio_write_32(NXP_CPUx_RVBARADDR(linear_id), 0x0);
 
+	gicd_write_cpendsgir(GICD_BASE, IRQ_SEC_SGI_8, 0xff);
 	/* Enable the gic cpu interface */
 	arm_gic_cpuif_setup();
 
@@ -208,6 +286,7 @@ static void s5p6818_cpu_off(void)
 	uint32_t regdata, linear_id;
 
 	linear_id = platform_get_core_pos(plat_my_core_pos());
+	VERBOSE("cpu%d power down\n", linear_id);
 
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,  regdata & ~(1<< linear_id));

@@ -111,7 +111,11 @@
 #define IRQ_SEC_SGI_5			13
 #define IRQ_SEC_SGI_6			14
 #define IRQ_SEC_SGI_7			15
-#define IRQ_SEC_SGI_8			16
+/* arm secure policy assign to non-secure this sgi interrupt,
+ * but linux does not use this interrupt number (use 0~3).
+ * so I'll use this sgi for user.
+ */
+#define IRQ_SEC_SGI_8			7
 
 /*******************************************************************************
  * NXP_UART related constants
@@ -140,7 +144,7 @@
 #define CCI400_SL_IFACE3_CLUSTER1_IX	1
 #define CCI400_SL_IFACE4_CLUSTER0_IX	0
 #else
-#define CCI_CLUSTER0_SL_IFACE_IX	3
-#define CCI_CLUSTER1_SL_IFACE_IX	4
+#define CCI_CLUSTER0_SL_IFACE_IX	4
+#define CCI_CLUSTER1_SL_IFACE_IX	3
 #endif
 #endif /* __S5P6818_DEF_H__ */
