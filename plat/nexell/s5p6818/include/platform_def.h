@@ -173,6 +173,12 @@
 
 #define BL31_DRAM_BASE			(BL1_LIMIT)
 #define BL31_DRAM_SIZE			0x5000
+
+#define SRAM_SAVE			((unsigned long)DRAM_BASE + OFFSET_FIXUP - SRAM_SIZE)
+
+#define HEADER_SIZE			0x1000
+#define HEADER_BASE			(SRAM_SAVE - HEADER_SIZE)
+
 #else
 #define BL31_BASE			(BL2_LIMIT)
 #define BL31_LIMIT			(BL31_BASE + 0x40000)

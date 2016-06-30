@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2012 Nexell Co., All Rights Reserved
+/*------------------------------------------------------------------------------
+ * Copyright (C) 2016 Nexell Co., All Rights Reserved
  * Nexell Co. Proprietary & Confidential
  *
  * NEXELL INFORMS THAT THIS CODE AND INFORMATION IS PROVIDED "AS IS" BASE
@@ -13,7 +13,8 @@
  * Author          : Hans
  * History         : 2013.08.24 Hans add port selection, size
  *		  2013.02.06 First implementation
- */
+ *
+ *----------------------------------------------------------------------------*/
 #ifndef __NX_SDHCBOOT_H__
 #define __NX_SDHCBOOT_H__
 

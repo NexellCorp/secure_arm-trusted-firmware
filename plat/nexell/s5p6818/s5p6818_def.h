@@ -49,17 +49,17 @@
 #if defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 2048
 #define ATFRAM0_BASE			0xbfe00000
 #define DRAM_SIZE			0x7fb00000UL
-#define BL1_LIMIT			0xbfff8000
+#define BL1_LIMIT			0xbffe8000
 #define OFFSET_FIXUP			0x80000000
 #elif defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 512
 #define ATFRAM0_BASE			0x5fe00000
 #define DRAM_SIZE			0x1fb00000UL
-#define BL1_LIMIT			0x5fff8000
+#define BL1_LIMIT			0x5ffe8000
 #define OFFSET_FIXUP			0x20000000
 #else
 #define ATFRAM0_BASE			0x7fe00000
 #define DRAM_SIZE			0x3fb00000UL
-#define BL1_LIMIT			0x7fff8000
+#define BL1_LIMIT			0x7ffe8000
 #define OFFSET_FIXUP			0x40000000
 #endif /* PLAT_DRAM_SIZE */
 
@@ -140,14 +140,56 @@
 /*******************************************************************************
  * CCI-400 related constants
  ******************************************************************************/
-#define CCI400_BASE				0xE0090000
-#if 0
-#define CCI400_SL_IFACE3_CLUSTER1_IX	1
-#define CCI400_SL_IFACE4_CLUSTER0_IX	0
-#else
+#define CCI400_BASE			0xE0090000
 #define CCI_CLUSTER0_SL_IFACE_IX	4
 #define CCI_CLUSTER1_SL_IFACE_IX	3
-#endif
+
+/*******************************************************************************
+ * ALIVE SCRATCH
+ ******************************************************************************/
+#define PHY_BASEADDR_ALIVE		(0xC0010800)
+
+#define	SCR_ALIVE_BASE			(PHY_BASEADDR_ALIVE)
+#define	SCR_SIGNATURE_RESET		(SCR_ALIVE_BASE + 0x068)
+#define	SCR_SIGNATURE_SET		(SCR_ALIVE_BASE + 0x06C)
+#define	SCR_SIGNATURE_READ		(SCR_ALIVE_BASE + 0x070)
+/* ALIVESCRATCHRST1 */
+#define	SCR_WAKE_FN_RESET		(SCR_ALIVE_BASE + 0x0AC)
+#define	SCR_WAKE_FN_SET			(SCR_ALIVE_BASE + 0x0B0)
+#define	SCR_WAKE_FN_READ		(SCR_ALIVE_BASE + 0x0B4)
+/* ALIVESCRATCHRST2 */
+#define	SCR_NEXT_HDR_RESET		(SCR_ALIVE_BASE + 0x0B8)
+#define	SCR_NEXT_HDR_SET		(SCR_ALIVE_BASE + 0x0BC)
+#define	SCR_NEXT_HDR_READ		(SCR_ALIVE_BASE + 0x0C0)
+/* ALIVESCRATCHRST3 */
+#define	SCR_CRC_PHY_RESET		(SCR_ALIVE_BASE + 0x0C4)
+#define	SCR_CRC_PHY_SET			(SCR_ALIVE_BASE + 0x0C8)
+#define	SCR_CRC_PHY_READ		(SCR_ALIVE_BASE + 0x0CC)
+/* ALIVESCRATCHRST4 */
+#define	SCR_CRC_LEN_RESET		(SCR_ALIVE_BASE + 0x0D0)
+#define	SCR_CRC_LEN_SET			(SCR_ALIVE_BASE + 0x0D4)
+#define	SCR_CRC_LEN_READ		(SCR_ALIVE_BASE + 0x0D8)
+/* ALIVESCRATCHRST5 */
+#define	SCR_RESET_SIG_RESET		(SCR_ALIVE_BASE + 0x0DC)
+#define	SCR_RESET_SIG_SET		(SCR_ALIVE_BASE + 0x0E0)
+#define	SCR_RESET_SIG_READ		(SCR_ALIVE_BASE + 0x0E4)
+/* ALIVESCRATCHRST6 */
+#define	SCR_USER_SIG6_RESET		(SCR_ALIVE_BASE + 0x0E8)
+#define	SCR_USER_SIG6_SET		(SCR_ALIVE_BASE + 0x0EC)
+#define	SCR_USER_SIG6_READ		(SCR_ALIVE_BASE + 0x0F0)
+/* ALIVESCRATCHRST7 */
+#define	SCR_USER_SIG7_RESET		(SCR_ALIVE_BASE + 0x0F4)
+#define	SCR_USER_SIG7_SET		(SCR_ALIVE_BASE + 0x0F8)
+#define	SCR_USER_SIG7_READ		(SCR_ALIVE_BASE + 0x0FC)
+/* ALIVESCRATCHRST8 */
+#define	SCR_USER_SIG8_RESET		(SCR_ALIVE_BASE + 0x100)
+#define	SCR_USER_SIG8_SET		(SCR_ALIVE_BASE + 0x104)
+#define	SCR_USER_SIG8_READ		(SCR_ALIVE_BASE + 0x108)
+
+#define SUSPEND_SIGNATURE		(0x41544600)	/* (ASCII) : "ATF" */
+#define	SUSPEND_SAVE_SIZE		(128*1024)	/* (_etext - _stext) */
+#define RECOVERY_SIGNATURE		(0x52455343)	/* (ASCII) : R.E.S.C */
+#define USBBOOT_SIGNATURE		(0x85836666)	/* (ASCII) : U.S.B.B */
 
 
 #endif /* __S5P6818_DEF_H__ */

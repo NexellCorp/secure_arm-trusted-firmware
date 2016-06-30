@@ -143,6 +143,12 @@ int psci_cpu_suspend(unsigned int power_state,
 			    target_pwrlvl,
 			    &state_info,
 			    is_power_down_state);
+	/*
+	psci_cpu_suspend_start(&ep,
+			    PLAT_MAX_PWR_LVL,
+			    &state_info,
+			    PSTATE_TYPE_POWERDOWN);
+	*/
 
 	return PSCI_E_SUCCESS;
 }

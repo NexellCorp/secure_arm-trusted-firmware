@@ -34,7 +34,7 @@
 #include <spinlock.h>
 #include <cci.h>
 #include <debug.h>
-#include <cci.h>
+#include <string.h>
 #include <errno.h>
 #include <gic_v2.h>
 #include <mmio.h>
@@ -56,7 +56,7 @@
 
 unsigned int targetcpu_id_bitfield;
 unsigned char cpulock[8];
-spinlock_t cpusl;
+spinlock_t cpusl __attribute__((__section__(".excl")));
 
 unsigned int check_user_req_handler(void)
 {
@@ -88,6 +88,8 @@ static void s5p6818_waitcpuidle(unsigned int target_id)
 	unsigned int status0, status1;
 	int my_id = plat_my_core_pos();
 	unsigned int pwrstatus = mmio_read_32(NXP_CPU_PWR_STATUS);
+	int once = 0;
+	unsigned int timeout = 0xffff;
 
 	cluster0 = ~(pwrstatus >> 8) & 0xf;
 	cluster1 = ~(pwrstatus >> 12) & 0xf;
@@ -110,12 +112,26 @@ static void s5p6818_waitcpuidle(unsigned int target_id)
 		status0 |= (status0 >> 5);
 		status0 &= 0xf;
 		status0 &= cluster0;
+		if (!once) {
+		NOTICE("wait1: %d, %d, %x, %x\n", my_id, target_id,
+				status0 /*| status1<<4*/, cluster0 | cluster1<<4);
+		once++;
+		}
 	} while (status0 != cluster0);
+	once = 0;
 	do {
 		status1 = mmio_read_32(NXP_CPU_PWR_STATUS_WFI(1));
 		status1 |= (status1 >> 5);
 		status1 &= 0xf;
 		status1 &= cluster1;
+		if (!once) {
+		NOTICE("wait2: %d, %d, %x, %x\n", my_id, target_id,
+				status0 | status1<<4, cluster0 | cluster1<<4);
+		once++;
+		}
+
+		if (!--timeout)
+			break;
 	} while (status1 != cluster1);
 	VERBOSE("wait: %d, %d, %x, %x\n", my_id, target_id,
 			status0 | status1<<4, cluster0 | cluster1<<4);
@@ -279,6 +295,8 @@ static int32_t s5p6818_do_plat_actions(uint32_t afflvl, uint32_t state)
 	if (afflvl != max_phys_off_afflvl)
 		return -EAGAIN;
 
+	disable_mmu_el3();
+
 	return 0;
 }
 static void s5p6818_cpu_off(void)
@@ -294,13 +312,18 @@ static void s5p6818_cpu_off(void)
 	 * TODO afflvl 1 is need more power function. but currently skiped
 	 * if all cpu is off in same cluster, system will be corrupted.
 	 */
-	if(linear_id & 0x3)
+	if (linear_id & 0x3)
 		mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
+	/* else
+	 *	while (1);
+	 */
+
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
 	__asm__ __volatile__ ("dsb sy");
-	__asm__ __volatile__ ("wfi");
+	while  (1) { __asm__ __volatile__ ("wfi"); }
 }
+
 static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 {
 	if (s5p6818_do_plat_actions(afflvl, state) == -EAGAIN)
@@ -312,9 +335,33 @@ static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 	if (afflvl != MPIDR_AFFLVL0) {
 		/* Disable coherency if this cluster is to be turned off */
 		plat_cci_disable();
-	}else
+	} else
 		s5p6818_cpu_off();
 }
+
+static void suspend_to_ram(uint64_t sec_entrypoint)
+{
+	/* Alive power gate open */
+	mmio_write_32(SCR_ALIVE_BASE, 1);
+
+	/* Write Signature */
+	mmio_write_32(SCR_CRC_LEN_SET, SUSPEND_SIGNATURE);
+
+	/* Write Entrypoint */
+	mmio_write_32(SCR_WAKE_FN_SET, (uint32_t)(sec_entrypoint >> 2));
+
+	/* Write Jump Address */
+	mmio_write_32(SCR_NEXT_HDR_SET, (uint32_t)(FLASH_LOADER_BASE));
+
+#ifdef BL31_ON_SRAM
+	/* Save to DRAM */
+	memcpy((void *)SRAM_SAVE, (void *)SRAM_BASE, SRAM_SIZE);
+#endif
+}
+
+
+extern void enterSelfRefresh(void);
+extern void vdd_power_off(void);
 
 static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,
 				  uint32_t afflvl,
@@ -340,6 +387,15 @@ static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,
 	if (afflvl > MPIDR_AFFLVL1)
 		/* Prevent interrupts from spuriously waking up this cpu */
 		arm_gic_cpuif_deactivate();
+
+	/* Suspend to ram */
+	suspend_to_ram(sec_entrypoint);
+
+	/* Enter DRAM Self refresh */
+	enterSelfRefresh();
+
+	/* Power Off */
+	vdd_power_off();
 }
 
 static void s5p6818_affinst_suspend_finish(uint32_t afflvl,
@@ -391,11 +447,11 @@ static void __dead2 s5p6818_system_off(void)
 
 	regvalue = mmio_read_32((uintptr_t)&pclkgen->clkenb);
 	mmio_write_32((uintptr_t)&pclkgen->clkenb,
-			regvalue | 1<<3 );      /* set i2c pclk mode*/
+			regvalue | 1<<3 );	/* set i2c pclk mode*/
 
 	regvalue = mmio_read_32((uintptr_t)(&pgpio[3]->gpioxaltfn[0]));
 	mmio_write_32((uintptr_t)(&pgpio[3]->gpioxaltfn[0]),
-			(regvalue & ~0xF<<(6*2)) | 5<<(6*2));   /* gpio alt1 */
+			(regvalue & ~0xF<<(6*2)) | 5<<(6*2));	/* gpio alt1 */
 
 	regvalue = mmio_read_32(
 			(uintptr_t)prstcon->regrst[
@@ -406,12 +462,12 @@ static void __dead2 s5p6818_system_off(void)
 		regvalue | 1<<(RESETINDEX_OF_I2C2_MODULE_PRESETn & 0x1F));
 
 	mmio_write_32((uintptr_t)&pi2c->iccr,
-			0xF<<5 | 0xF<<0);       /* pclk/256/(15+1) */
+			0xF<<5 | 0xF<<0);	/* pclk/256/(15+1) */
 	mmio_write_32((uintptr_t)&pi2c->iclc,
-			1<<2 | 3<<0);   /* filter enable, 15 clocks delayed */
+			1<<2 | 3<<0);	/* filter enable, 15 clocks delayed */
 
 	mmio_write_32((uintptr_t)&pi2c->icsr,
-			3<<6 | 1<<5 | 1<<4);    /* enable tx rx */
+			3<<6 | 1<<5 | 1<<4);	/* enable tx rx */
 
 	mmio_write_32((uintptr_t)&pi2c->idsr, PMIC_ID & 0xFE);
 	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
@@ -419,7 +475,7 @@ static void __dead2 s5p6818_system_off(void)
 
 	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
 	mmio_write_32((uintptr_t)&pi2c->iccr,
-			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
+			regvalue & ~(1<<4));	/* clr int pend(nxt start)*/
 	/* wait int pending */
 	while (!(mmio_read_32((uintptr_t)&pi2c->iccr) & 1<<4))
 		;
@@ -433,7 +489,7 @@ static void __dead2 s5p6818_system_off(void)
 	mmio_write_32((uintptr_t)&pi2c->idsr, PMIC_PWROFF);
 	regvalue = mmio_read_32((uintptr_t)&pi2c->iccr);
 	mmio_write_32((uintptr_t)&pi2c->iccr,
-			regvalue & ~(1<<4));    /* clr int pend(nxt start)*/
+			regvalue & ~(1<<4));	/* clr int pend(nxt start)*/
 	/* wait int pending */
 	while (!(mmio_read_32((uintptr_t)&pi2c->iccr) & 1<<4))
 		;
@@ -464,12 +520,12 @@ static void __dead2 s5p6818_system_off(void)
 
 	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
 	mmio_write_32((uintptr_t)&pi2c->icsr,
-			regvalue & ~(1<<4));    /* enable tx rx */
+			regvalue & ~(1<<4));	/* enable tx rx */
 
 i2cexit:
 	regvalue = mmio_read_32((uintptr_t)&pi2c->icsr);
 	mmio_write_32((uintptr_t)&pi2c->icsr,
-			regvalue & ~(1<<4));    /* bus disable */
+			regvalue & ~(1<<4));	/* bus disable */
 	VERBOSE("i2c stop\r\n");
 
 	wfi();
@@ -478,7 +534,7 @@ i2cexit:
 
 static void __dead2 s5p6818_system_reset(void)
 {
-        uint32_t regvalue;
+	uint32_t regvalue;
 	struct nx_wdt_registerset *pwdt =
 		(struct nx_wdt_registerset *)PHY_BASEADDR_WDT_MODULE;
 	struct nx_rstcon_registerset *prstcon =
@@ -487,7 +543,7 @@ static void __dead2 s5p6818_system_reset(void)
 
 	regvalue = mmio_read_32(
 			(uintptr_t)&prstcon->regrst
-				[RESETINDEX_OF_WDT_MODULE_PRESETn>>5]);
+			[RESETINDEX_OF_WDT_MODULE_PRESETn>>5]);
 	mmio_write_32(
 		(uintptr_t)&prstcon->regrst
 			[RESETINDEX_OF_WDT_MODULE_PRESETn>>5],
@@ -496,7 +552,7 @@ static void __dead2 s5p6818_system_reset(void)
 
 	regvalue =	0xff<<8 |	/* prescaler */
 		WDT_CLOCK_DIV128<<3 |
-			0x1<<2;		/* watchdog reset enable */
+		0x1<<2;		/* watchdog reset enable */
 
 	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue);
 	mmio_write_32((uintptr_t)&pwdt->wtcnt, 0x1); /* reset count */
@@ -504,6 +560,12 @@ static void __dead2 s5p6818_system_reset(void)
 
 	wfi();
 	panic();
+}
+
+static unsigned int plat_get_sys_suspend_power_state(void)
+{
+	/* StateID: 0, StateType: 1(power down), PowerLevel: 2(system) */
+	return psci_make_powerstate(0, 1, 1);
 }
 
 /*******************************************************************************
@@ -518,6 +580,7 @@ static const plat_pm_ops_t s5p6818_ops = {
 	.affinst_suspend_finish	= s5p6818_affinst_suspend_finish,
 	.system_off		= s5p6818_system_off,
 	.system_reset		= s5p6818_system_reset,
+	.get_sys_suspend_power_state = plat_get_sys_suspend_power_state,
 };
 
 /*******************************************************************************

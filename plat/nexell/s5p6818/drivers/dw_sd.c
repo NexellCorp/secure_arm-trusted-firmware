@@ -99,7 +99,9 @@ static bool nx_sdmmc_setclock(
 	struct nx_clkinfo_sdmmc clkinfo;
 	bool ret;
 
+#if 0
 	VERBOSE("NX_SDMMC_SetClock : divider = %d\r\n", divider);
+#endif
 
 
 	/*----------------------------------------------------------------------

@@ -73,6 +73,46 @@ meminfo_t *bl1_plat_sec_mem_layout(void)
 	return &bl1_tzram_layout;
 }
 
+
+void restore_to_ram(void)
+{
+	uint32_t signature;
+	uint64_t entrypoint;
+
+	/* Read scratch */
+	signature = mmio_read_32(SCR_CRC_LEN_READ);
+
+	VERBOSE("signature: %x\n", signature);
+	if (signature != SUSPEND_SIGNATURE)
+		return;
+
+	VERBOSE("  signature verified. resume start");
+
+	entrypoint = mmio_read_32(SCR_WAKE_FN_READ) << 2;
+
+	/* Alive power gate open */
+	mmio_write_32(SCR_ALIVE_BASE, 1);
+
+	mmio_write_32(SCR_CRC_LEN_RESET, 0xffffffff);
+	mmio_write_32(SCR_WAKE_FN_RESET, 0xffffffff);
+	mmio_write_32(SCR_NEXT_HDR_RESET, 0xffffffff);
+
+#ifdef BL31_ON_SRAM
+	/* Restore SRAM */
+	memcpy((void *)SRAM_BASE, (void *)SRAM_SAVE, SRAM_SIZE);
+#endif
+
+	/* Jump to ... (psci_entrypoint) */
+	((void (*)(void))entrypoint)();
+}
+
+void copy_sram_header(void)
+{
+#ifdef BL31_ON_SRAM
+	memcpy((void *)HEADER_BASE, (void *)SRAM_BASE, 0x200);
+#endif
+}
+
 /*******************************************************************************
  * Perform any BL1 specific platform actions.
  ******************************************************************************/
@@ -94,6 +134,12 @@ void bl1_early_platform_setup(void)
 	 * Enable CCI coherency for the primary CPU's cluster.
 	 */
 	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
+
+	/* Copy 2ndboot header */
+	copy_sram_header();
+
+	/* bl31 restore to SRAM */
+	restore_to_ram();
 
 	/* Allow BL1 to see the whole Trusted RAM */
 	bl1_tzram_layout.total_base = BL1_RW_BASE;

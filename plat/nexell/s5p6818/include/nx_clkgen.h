@@ -13,6 +13,7 @@
  *	Description	:
  *	Author		: SOC Team
  *	History		:
+ *
  *----------------------------------------------------------------------------*/
 #ifndef __NX_CLKGEN_H__
 #define __NX_CLKGEN_H__
