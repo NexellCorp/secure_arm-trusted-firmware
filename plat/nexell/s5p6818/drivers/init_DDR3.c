@@ -27,6 +27,8 @@
 
 #include <debug.h>
 
+#define CFG_NSIH_EN			(1)
+
 #define MEMMSG INFO
 #define MEM_TYPE_DDR3
 
