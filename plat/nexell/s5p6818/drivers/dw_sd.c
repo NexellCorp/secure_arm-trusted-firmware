@@ -527,13 +527,13 @@ static bool nx_sdmmc_identifycard(struct cardstatus *pcardstatus)
 			return false;
 
 		HCS = 1<<30;
-		NOTICE("Ver 2.0 or later SD Memory Card\r\n");
+		VERBOSE("Ver 2.0 or later SD Memory Card\r\n");
 	} else {
 		/* voltage mismatch or Ver 1.X SD Memory Card
 		 * or not SD Memory Card
 		 */
 		HCS = 0;
-		NOTICE("voltage mismatch or Ver 1.X SD Memory Card or not SD Memory Card\r\n");
+		VERBOSE("voltage mismatch or Ver 1.X SD Memory Card or not SD Memory Card\r\n");
 	}
 
 	/*----------------------------------------------------------------------
@@ -578,7 +578,7 @@ static bool nx_sdmmc_identifycard(struct cardstatus *pcardstatus)
 			}
 		}
 
-		NOTICE("--> Found SD Memory Card.\r\n");
+		VERBOSE("--> Found SD Memory Card.\r\n");
 		VERBOSE("--> SD_SEND_OP_COND Response = 0x%08X\r\n",
 							cmd.response[0]);
 
@@ -613,7 +613,7 @@ static bool nx_sdmmc_identifycard(struct cardstatus *pcardstatus)
 		/* Wait until card has finished the power up routine */
 		} while (0 == (cmd.response[0] & (1UL<<31)));
 
-		NOTICE("--> Found MMC Memory Card.\r\n");
+		VERBOSE("--> Found MMC Memory Card.\r\n");
 		VERBOSE("--> SEND_OP_COND Response = 0x%08X\r\n", cmd.response[0]);
 
 		cardtype	= NX_SDMMC_CARDTYPE_MMC;
@@ -625,7 +625,7 @@ static bool nx_sdmmc_identifycard(struct cardstatus *pcardstatus)
 			(cmd.response[0] & (1<<30)) ? true : false;
 
 	if (pcardstatus->bhighcapacity)
-		NOTICE("--> High Capacity Memory Card.\r\n");
+		VERBOSE("--> High Capacity Memory Card.\r\n");
 
 	/*----------------------------------------------------------------------
 	 * Get CID
@@ -1312,7 +1312,7 @@ bool load_mmc(unsigned int portnum,
 			;
 	}
 
-	NOTICE("sd%d load image at %x sector, cnt:%x, target:%lx\r\n",
+	INFO("sd%d load image at %x sector, cnt:%x, target:%lx\r\n",
 			portnum, startsector, sectorcount, (unsigned long)pmem);
 
 	result = nx_sdmmc_readsectors(pcardstatus,
