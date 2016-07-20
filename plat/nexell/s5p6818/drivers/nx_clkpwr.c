@@ -113,8 +113,8 @@ void vdd_power_off(void)
 		/* now real entering point to stop mode. */
 		__asm__ __volatile__("wfi");
 	} else {
-		/* Retention off (Pad hold off) */
-		mmio_write_32((uintptr_t)&palive->vddctrlsetreg, 0x000003FC);
+		/* PAD Retention (Pad hold) */
+		mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x000003FC);
 		/* vddpoweron off, start counting down. */
 		mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x00000001);
 
@@ -148,6 +148,8 @@ void vdd_power_off(void)
 	 */
 	mmio_write_32((uintptr_t)&palive->vddoffcntvalueset, 0x00000001);
 
+	/* PAD Retention (Pad hold) */
+	mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x000003FC);
 	/* vddpoweron off, start counting down. */
 	mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x00000001);
 	DMC_Delay(220);
