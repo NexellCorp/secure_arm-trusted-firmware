@@ -32,6 +32,12 @@
 #ifndef __S5P6818_DEF_H__
 #define __S5P6818_DEF_H__
 
+#ifndef __LINKER__
+  #define MAKE_UL(x)			x##UL
+#else
+  #define MAKE_UL(x)			x
+#endif
+
 #define DEVICE_BASE			0xC0000000	/* Peripheral base */
 #define DEVICE_SIZE			0x3F000000
 
@@ -43,53 +49,64 @@
 #define DEVICE_MMC	2
 
 /* The size of DRAM is 1GB as default. */
-/*unused: #define ATFRAM0_SIZE			0x200000*/
 #define DRAM_BASE			0x40000000
 
 #if defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 2048
-#define ATFRAM0_BASE			0xbfe00000
-#define DRAM_SIZE			0x7fb00000UL
-#define BL1_LIMIT			0xbffe8000
-#define OFFSET_FIXUP			0x80000000
+#define DRAM_SIZE			0x80000000
+#define DRAM_LIMIT			MAKE_UL(0xC0000000)
 #elif defined(PLAT_DRAM_SIZE) && PLAT_DRAM_SIZE == 512
-#define ATFRAM0_BASE			0x5fe00000
-#define DRAM_SIZE			0x1fb00000UL
-#define BL1_LIMIT			0x5ffe8000
-#define OFFSET_FIXUP			0x20000000
+#define DRAM_SIZE			0x20000000
+#define DRAM_LIMIT			MAKE_UL(0x60000000)
 #else
-#define ATFRAM0_BASE			0x7fe00000
-#define DRAM_SIZE			0x3fb00000UL
-#define BL1_LIMIT			0x7ffe8000
-#define OFFSET_FIXUP			0x40000000
+#define DRAM_SIZE			0x40000000
+#define DRAM_LIMIT			MAKE_UL(0x80000000)
 #endif /* PLAT_DRAM_SIZE */
 
-#define FLASH_LOADER_BASE		(OFFSET_FIXUP + 0x3fdce000)
-#define FLASH_LOADER_SIZE		0x00042000
 
-#define FLASH_SECURE_BASE		(OFFSET_FIXUP + 0x3fd00000)
-#define FLASH_SECURE_SIZE		0x000c0000
+/*
+ * DRAM at 0x4000_0000 is divided in two regions:
+ *   - Secure DRAM (default is the top 32MB)
+ *   - Non-Secure DRAM (remaining DRAM starting at DRAM_BASE)
+ */
+#define DRAM_SEC_SIZE			0x02000000	/* sWd Region */
+#define DRAM_SEC_BASE			(DRAM_LIMIT - DRAM_SEC_SIZE)
 
-#define FLASH_NONSECURE_BASE		(OFFSET_FIXUP + 0x3fb00000)
-#define FLASH_NONSECURE_SIZE		0x00200000
+#define DRAM_NS_BASE			DRAM_BASE
+#define DRAM_NS_SIZE			(DRAM_SIZE  - DRAM_SEC_SIZE)
+
+#define SRAM_BASE			0xFFFF0000
+#define SRAM_SIZE			0x00010000
+
+/*
+ * secure memory partitions
+ */
+#define ATF_SIZE			0x00300000
+#define ATFRAM0_BASE			(DRAM_LIMIT - ATF_SIZE)
+#define ATFRAM0_SIZE			0x00200000
+
+#define BL1_SIZE			0x10000
+#define BL1_LIMIT			(ATFRAM0_BASE + ATFRAM0_SIZE)
+
+#define FIP_SIZE			0x00300000
+#define FIP_BASE			(ATFRAM0_BASE - FIP_SIZE)
+#define FIP_RESERVED1		0x100000
+#define FIP_RESERVED2		0X40000
+
+
+#define FLASH_NONSECURE_SIZE		0x00100000
+#define FLASH_NONSECURE_BASE		(DRAM_LIMIT - DRAM_SEC_SIZE - FLASH_NONSECURE_SIZE)
+
+#define FLASH_SECURE_BASE		(FIP_BASE + FIP_RESERVED1)
+#define FLASH_SECURE_SIZE		0x00180000
+
+#define FLASH_LOADER_SIZE		(0x00040000 + BL1_SIZE)
+#define FLASH_LOADER_BASE		(FLASH_SECURE_BASE + FLASH_SECURE_SIZE + FIP_RESERVED2)
 
 
 
 #define PLAT_TRUSTED_SRAM_ID		0
 #define PLAT_TRUSTED_DRAM_ID		1
 
-/*
- * DRAM at 0x4000_0000 is divided in two regions:
- *   - Secure DRAM (default is the top 16MB)
- *   - Non-Secure DRAM (remaining DRAM starting at DRAM_BASE)
- */
-#define DRAM_SEC_SIZE			0x02000000
-#define DRAM_SEC_BASE			(DRAM_BASE + DRAM_SIZE - DRAM_SEC_SIZE)
-
-#define DRAM_NS_BASE			DRAM_BASE
-#define DRAM_NS_SIZE			(DRAM_SIZE - DRAM_SEC_SIZE)
-
-#define SRAM_BASE			0xFFFF0000
-#define SRAM_SIZE			0x00010000
 
 /*******************************************************************************
  * System counter frequency related constants

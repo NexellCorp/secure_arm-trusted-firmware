@@ -37,6 +37,7 @@
 /*#include <cci400.h>*/
 #include <cci.h>
 #include <console.h>
+#include <string.h>
 #include <mmio.h>
 #include <platform.h>
 #include <s5p6818_def.h>
@@ -155,6 +156,10 @@ void bl31_platform_setup(void)
  ******************************************************************************/
 void bl31_plat_arch_setup(void)
 {
+#ifdef BL31_ON_SRAM
+	memset((void *)BL31_DRAM_BASE, 0x00, BL31_DRAM_SIZE);
+#endif
+
 	plat_configure_mmu_el3(BL31_RO_BASE,
 			       (BL31_END - BL31_RO_BASE),
 			       BL31_RO_BASE,

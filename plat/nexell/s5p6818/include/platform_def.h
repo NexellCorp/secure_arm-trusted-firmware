@@ -124,27 +124,25 @@
  * Platform memory map related constants
  ******************************************************************************/
 
+#define HEADER_SIZE			0x400
+
 #define MMC_BASE			0x00000000
 #define MMC_SIZE			0x80000000
 #define MMC_BLOCK_SIZE			0x200		/* 512 bytes */
+#define MMC_MBR				0x200
+#define MMC_2NDBOOT			0xFE00
+#define MMC_RESERVED			(MMC_MBR + MMC_2NDBOOT)
 
-#define MMC_LOADER_BASE			(MMC_BASE + (0x10200))
-#define MMC_LOADER_SIZE			(0x40000-0x1000)
+#define MMC_LOADER_BASE			(MMC_BASE + MMC_RESERVED)
+#define MMC_LOADER_SIZE			(FLASH_LOADER_SIZE - HEADER_SIZE)
 
-#define MMC_SECURE_BASE			(MMC_BASE + (0x50200))
-#define MMC_SECURE_SIZE			(0xC0000-0x1000)
+#define MMC_SECURE_BASE			(MMC_LOADER_BASE + MMC_LOADER_SIZE)
+#define MMC_SECURE_SIZE			(FLASH_SECURE_SIZE - HEADER_SIZE)
 
-#define MMC_NONSECURE_BASE		(MMC_BASE + (0x110200))
-#define MMC_NONSECURE_SIZE		(0x200000-0x1000)
+#define MMC_NONSECURE_BASE		(MMC_SECURE_BASE + MMC_SECURE_SIZE)
+#define MMC_NONSECURE_SIZE		(FLASH_NONSECURE_SIZE - HEADER_SIZE)
 
 #define BL1_ATFRAM0_OFFSET		0x1000
-
-#define DDR_BASE			0x40000000
-
-#define MMC_DESC_BASE			(DDR_BASE + 0x0080000)
-#define MMC_DESC_SIZE			0x00020000
-#define MMC_DATA_BASE			(MMC_DESC_BASE + MMC_DESC_SIZE)
-#define MMC_DATA_SIZE			0x00800000
 
 /*******************************************************************************
  * BL1 specific defines.
@@ -152,7 +150,7 @@
  * addresses.
  ******************************************************************************/
 #define BL1_RO_BASE			(ATFRAM0_BASE + BL1_ATFRAM0_OFFSET)
-#define BL1_RO_LIMIT			(ATFRAM0_BASE + 0x10000)
+#define BL1_RO_LIMIT			(ATFRAM0_BASE + BL1_SIZE)
 #define BL1_RW_BASE			(BL1_RO_LIMIT)
 #define BL1_RW_SIZE			(BL1_LIMIT - BL1_RW_BASE)
 #define BL1_RW_LIMIT			(BL1_LIMIT)
@@ -174,9 +172,8 @@
 #define BL31_DRAM_BASE			(BL1_LIMIT)
 #define BL31_DRAM_SIZE			0x5000
 
-#define SRAM_SAVE			((unsigned long)DRAM_BASE + OFFSET_FIXUP - SRAM_SIZE)
+#define SRAM_SAVE			((unsigned long)DRAM_BASE + DRAM_SIZE - SRAM_SIZE)
 
-#define HEADER_SIZE			0x1000
 #define HEADER_BASE			(SRAM_SAVE - HEADER_SIZE)
 
 #else
@@ -194,7 +191,8 @@
 #define BL32_SRAM_BASE			BL31_LIMIT
 #define BL32_SRAM_LIMIT			0 /*(BL32_SRAM_BASE + 0x0040000)*/
 
-#define BL32_DRAM_BASE			DRAM_SEC_BASE
+#define BL32_DRAM_OFFSET		0xA00000
+#define BL32_DRAM_BASE			(DRAM_SEC_BASE + BL32_DRAM_OFFSET)
 #define BL32_DRAM_LIMIT			(DRAM_SEC_BASE + DRAM_SEC_SIZE)
 
 #if (PLAT_TSP_LOCATION_ID == PLAT_TRUSTED_SRAM_ID)
