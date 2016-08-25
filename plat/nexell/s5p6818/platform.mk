@@ -100,6 +100,7 @@ BL31_SOURCES		+=	drivers/arm/cci/cci.c				\
 				${NEXELL_PLAT_SOC}/bl31_plat_setup.c		\
 				${NEXELL_PLAT_SOC}/drivers/s5p6818_timer.c	\
 				${NEXELL_PLAT_SOC}/plat_pm.c			\
+				${NEXELL_PLAT_SOC}/plat_sip.c			\
 				${NEXELL_PLAT_SOC}/plat_topology.c		\
 				${NEXELL_PLAT_SOC}/drivers/nx_clkpwr.c		\
 				${NEXELL_PLAT_SOC}/drivers/init_DDR3.c

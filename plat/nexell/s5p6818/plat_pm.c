@@ -76,6 +76,22 @@ unsigned int check_user_req_handler(void)
 	}
 	return 0;
 }
+
+unsigned int check_user_smc_handler(void)
+{
+	int my_id = plat_my_core_pos();
+
+	cpulock[my_id] = 1;
+
+	if (targetcpu_id_bitfield & 1 << my_id) {
+		spin_lock(&cpusl);
+		spin_unlock(&cpusl);
+	}
+	cpulock[my_id] = 0;
+
+	return 0;
+}
+
 static void s5p6818_getcpuidle(unsigned int int_num, unsigned int target_cpu)
 {
 	gicd_write_sgir(GICD_BASE,
@@ -308,7 +324,7 @@ static void s5p6818_cpu_off(void)
 
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,  regdata & ~(1<< linear_id));
-	/* 
+	/*
 	 * TODO afflvl 1 is need more power function. but currently skiped
 	 * if all cpu is off in same cluster, system will be corrupted.
 	 */
@@ -424,7 +440,7 @@ static void s5p6818_affinst_suspend_finish(uint32_t afflvl,
 	mmio_write_32(NXP_CPUx_RVBARADDR(linear_id), 0x0);
 }
 
-/* 
+/*
  * send nxe2000 pmic power off command through i2c port 2
  * device id:0x32, register number 0xE, register value 0x1
  */
