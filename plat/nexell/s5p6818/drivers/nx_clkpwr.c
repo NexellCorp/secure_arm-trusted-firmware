@@ -21,7 +21,7 @@
 
 inline void DMC_Delay(int milisecond)
 {
-	int count, temp;
+	register volatile int count, temp;
 
 	for (count = 0; count < milisecond; count++) {
 		temp ^= count;
@@ -71,10 +71,12 @@ void vdd_power_off(void)
 	/* Clear USE_WFI & USE_WFE bits for STOP mode. */
 	/* mmio_clrbits_32((uintptr_t) &pclkpwr->PWRCONT, (0x3FFFF << 8)); */
 	/* stop mode needs all cpu wfi */
-	mmio_setbits_32((uintptr_t)&pclkpwr->pwrcont, 0xF << 12 | 0xF << 20);
+	/* mmio_setbits_32((uintptr_t)&pclkpwr->pwrcont, 0xF << 12 | 0xF << 20);
+	 */
 	/* stop mode does not need all cpu wfe */
 	mmio_clrbits_32((uintptr_t)&pclkpwr->pwrcont, 0xF << 8 | 0xF << 16);
 
+#define MULTICORE_SLEEP_CONTROL	(1)
 #if (MULTICORE_SLEEP_CONTROL == 1)
 	/* alive power gate open */
 	mmio_write_32((uintptr_t)&palive->alivepwrgatereg, 0x00000001);
@@ -82,7 +84,7 @@ void vdd_power_off(void)
 	/*----------------------------------
 	 * Save leveling & training values.
 	 */
-#if 1
+#if 0
 	/* clear - ctrl_shiftc */
 	mmio_write_32((uintptr_t)&palive->alivescratchrst5, 0xFFFFFFFF);
 	/* clear - ctrl_offsetC */
@@ -109,10 +111,12 @@ void vdd_power_off(void)
 	 */
 	mmio_write_32((uintptr_t)&palive->vddoffcntvalueset, 0x00000001);
 
+	#if 0
 	if (mmio_read_32((uintptr_t)&palive->alivegpiodetectpendreg)) {
 		/* now real entering point to stop mode. */
 		__asm__ __volatile__("wfi");
 	} else {
+	#endif
 		/* PAD Retention (Pad hold) */
 		mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x000003FC);
 		/* vddpoweron off, start counting down. */
@@ -128,13 +132,15 @@ void vdd_power_off(void)
 		/* alive power gate close */
 		/* mmio_write_32((uintptr_t)&palive->ALIVEPWRGATEREG, 0x00000000); */
 
+		/* enter STOP mode. */
+		mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1));
 		while (1) {
-			/* enter STOP mode. */
-			mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1));
 			/* now real entering point to stop mode. */
 			__asm__ __volatile__("wfi");
 		}
+	#if 0
 	}
+	#endif
 
 #else  /* #if (MULTICORE_SLEEP_CONTROL == 1) */
 
@@ -162,9 +168,9 @@ void vdd_power_off(void)
 	/* clear for reset issue. */
 	mmio_write_32((uintptr_t)&pclkpwr->cpuwarmresetreq, 0x0);
 
+	/* enter STOP mode. */
+	mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1));
 	while (1) {
-		/* enter STOP mode. */
-		mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1));
 		/* now real entering point to stop mode. */
 		__asm__ __volatile__("wfi");
 	}
