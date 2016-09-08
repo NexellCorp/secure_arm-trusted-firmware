@@ -57,6 +57,8 @@ unsigned int nx_clkpwr_getpllfreq(unsigned int pllnumber)
 	return temp;
 }
 
+extern void watchdog_start(uint16_t);
+
 void vdd_power_off(void)
 {
 	volatile struct nx_clkpwr_registerset *pclkpwr =
@@ -122,6 +124,9 @@ void vdd_power_off(void)
 		/* vddpoweron off, start counting down. */
 		mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x00000001);
 
+		/* watchdog setup */
+		watchdog_start(0x3333);
+
 		/* all alive pend pending clear until power down. */
 		mmio_write_32((uintptr_t)&palive->alivegpiodetectpendreg, 0xFF);
 		/* 600 : 110us, Delay for Pending Clear. When
@@ -158,6 +163,10 @@ void vdd_power_off(void)
 	mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x000003FC);
 	/* vddpoweron off, start counting down. */
 	mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x00000001);
+
+	/* watchdog setup */
+	watchdog_start(0x3333);
+
 	DMC_Delay(220);
 
 	/* all alive pend pending clear until power down. */

@@ -548,7 +548,7 @@ i2cexit:
 	panic();
 }
 
-static void __dead2 s5p6818_system_reset(void)
+void watchdog_start(uint16_t wtcnt)
 {
 	uint32_t regvalue;
 	struct nx_wdt_registerset *pwdt =
@@ -566,13 +566,18 @@ static void __dead2 s5p6818_system_reset(void)
 			regvalue |
 				3<<(RESETINDEX_OF_WDT_MODULE_PRESETn & (32-1)));
 
-	regvalue =	0xff<<8 |	/* prescaler */
-		WDT_CLOCK_DIV128<<3 |
-		0x1<<2;		/* watchdog reset enable */
+	regvalue = 0xff<<8 |		/* prescaler value */
+		WDT_CLOCK_DIV128<<3 |	/* division factor */
+		0x1<<2;			/* reset enable */
 
 	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue);
-	mmio_write_32((uintptr_t)&pwdt->wtcnt, 0x1); /* reset count */
+	mmio_write_32((uintptr_t)&pwdt->wtcnt, wtcnt & 0xffff); /* reset cnt */
 	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue | 1<<5); /* now reset */
+}
+
+static void __dead2 s5p6818_system_reset(void)
+{
+	watchdog_start(1);
 
 	wfi();
 	panic();
