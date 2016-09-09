@@ -32,12 +32,14 @@
 #define LVLTR_RD_CAL (1 << 3)
 #define LVLTR_WR_CAL (1 << 4)
 
+#if 0
 enum { BOOT_FROM_USB = 0UL,
        BOOT_FROM_SPI = 1UL,
        BOOT_FROM_NAND = 2UL,
        BOOT_FROM_SDMMC = 3UL,
        BOOT_FROM_SDFS = 4UL,
        BOOT_FROM_UART = 5UL };
+#endif
 
 struct NX_NANDBootInfo {
 	unsigned char AddrStep;
