@@ -153,6 +153,22 @@ static void s5p6818_waitcpuidle(unsigned int target_id)
 			status0 | status1<<4, cluster0 | cluster1<<4);
 }
 
+void s5p6818_sendsev(unsigned int my_id)
+{
+	uintptr_t reg_base;
+	uint32_t regvalue;
+
+	reg_base = (uintptr_t)NXP_CPU_SEV_TO_BUDDY(my_id);
+
+	regvalue = mmio_read_32(reg_base);
+	regvalue &= ~(1 << 8);
+
+	mmio_write_32(reg_base, regvalue | 1 << 8);
+	__asm__ __volatile__ ("dmb sy");
+	mmio_write_32(reg_base, regvalue);
+	__asm__ __volatile__ ("dmb sy");
+}
+
 static void s5p6818_power_on_cpu(int cluster, int cpu, int target_id)
 {
 	unsigned int ctrl_addr;
@@ -198,11 +214,13 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int target_id)
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, (1 << target_id));
 	__asm__ __volatile__ ("dmb sy");
 	__asm__ __volatile__ ("isb");
+	__asm__ __volatile__ ("dsb sy");
 
+	do {
+		plat_reg_delay(20000);
+	} while (mmio_read_32(NXP_CPU_PWR_STATUS) &
+			(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(target_id)));
 	plat_reg_delay(10000);
-	while (mmio_read_32(NXP_CPU_PWR_STATUS) &
-			(1 << NXP_CPUx_PWROFF_STATUS_SHIFT(target_id)))
-		;
 
 	/* clear power up status */
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
@@ -214,6 +232,7 @@ static void s5p6818_power_on_cpu(int cluster, int cpu, int target_id)
 
 	targetcpu_id_bitfield = 0;
 
+	s5p6818_sendsev(my_id);
 	spin_unlock(&cpusl);
 }
 

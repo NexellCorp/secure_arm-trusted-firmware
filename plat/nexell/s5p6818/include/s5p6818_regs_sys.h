@@ -164,5 +164,7 @@
 #define NXP_CPU_PWR_STATUS_WFI(x)				\
 	((x == 0) ? (TIEOFF_CTRL_BASE + (90<<2)) :		\
 	 (TIEOFF_CTRL_BASE + (107<<2)))
-
+#define NXP_CPU_SEV_TO_BUDDY(x)					\
+	((x < 4) ? (TIEOFF_CTRL_BASE + 0x1bc) :		\
+	 (TIEOFF_CTRL_BASE + 0x178))
 #endif /* __S5P6818_REGS_SYSTEM_H__ */
