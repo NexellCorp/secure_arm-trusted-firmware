@@ -382,26 +382,34 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 	return result;
 }
 
-int readimage(unsigned char *bh, unsigned char *cbh, unsigned char *bootimage);
+int readimage(unsigned char *bh, unsigned char *hdr, unsigned char *bootimage);
 int plat_load_secureimage(void)
 {
-	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
-	struct nx_bootheader bh;
+	struct nx_bootheader *hdr = (struct nx_bootheader *)FLASH_LOADER_BASE;
+	struct nx_bootheader *bh;
 
+	if (hdr->tbbi.bootdev == BOOT_FROM_USB && hdr->tbbi.unified) {
+		bh = (struct nx_bootheader *)
+			(FLASH_SECURE_BASE - sizeof(*hdr));
+	} else {
+		struct nx_bootheader loaded_hdr;
+		bh = &loaded_hdr;
 
-	VERBOSE("load secure boot header\n");
-	load_mmc(cbh->tbbi.dbi[0].sdmmcbi.portnumber,
-			cbh->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
-			2, (void*)&bh);
+		VERBOSE("load secure boot header\n");
+		load_mmc(hdr->tbbi.dbi[0].sdmmcbi.portnumber,
+			 hdr->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
+			 2, (void*)bh);
 
-	VERBOSE("load secure boot image:%d\n", bh.tbbi.loadsize);
-	load_mmc(cbh->tbbi.dbi[0].sdmmcbi.portnumber,
-			cbh->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
-			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
-			(void*)bh.tbbi.loadaddr);
+		VERBOSE("load secure boot image:%d\n", bh->tbbi.loadsize);
+		load_mmc(hdr->tbbi.dbi[0].sdmmcbi.portnumber,
+			 hdr->tbbi.dbi[0].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
+			 (bh->tbbi.loadsize + MMC_BLOCK_SIZE-1)/MMC_BLOCK_SIZE,
+			 (void*)bh->tbbi.loadaddr);
+	}
+
 #ifdef SECURE_ON
-	return readimage((unsigned char *)&bh, (unsigned char *)cbh,
-			(unsigned char *)bh.tbbi.loadaddr);
+	return readimage((unsigned char *)bh, (unsigned char *)hdr,
+			(unsigned char *)bh->tbbi.loadaddr);
 #else
 	return 0;
 #endif
@@ -409,23 +417,31 @@ int plat_load_secureimage(void)
 
 int plat_load_nonsecure_bootloader(void)
 {
-	struct nx_bootheader *cbh = (struct nx_bootheader *)FLASH_LOADER_BASE;
-	struct nx_bootheader bh;
+	struct nx_bootheader *hdr = (struct nx_bootheader *)FLASH_LOADER_BASE;
+	struct nx_bootheader *bh;
 
-	VERBOSE("load nonsecure boot header\n");
-	load_mmc(cbh->tbbi.dbi[1].sdmmcbi.portnumber,
-			cbh->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
-			2, (void*)&bh);
+	if (hdr->tbbi.bootdev == BOOT_FROM_USB && hdr->tbbi.unified) {
+		bh = (struct nx_bootheader *)
+			(FLASH_NONSECURE_BASE - sizeof(*hdr));
+	} else {
+		struct nx_bootheader loaded_hdr;
+		bh = &loaded_hdr;
 
-	VERBOSE("load nonsecure boot image:%d\n", bh.tbbi.loadsize);
-	load_mmc(cbh->tbbi.dbi[1].sdmmcbi.portnumber,
-			cbh->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
-			(bh.tbbi.loadsize + MMC_BLOCK_SIZE - 1)/MMC_BLOCK_SIZE,
-			(void*)bh.tbbi.loadaddr);
+		VERBOSE("load nonsecure boot header\n");
+		load_mmc(hdr->tbbi.dbi[1].sdmmcbi.portnumber,
+			 hdr->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE,
+			 2, (void*)bh);
+
+		VERBOSE("load nonsecure boot image:%d\n", bh->tbbi.loadsize);
+		load_mmc(hdr->tbbi.dbi[1].sdmmcbi.portnumber,
+			 hdr->tbbi.dbi[1].sdmmcbi.deviceaddr/MMC_BLOCK_SIZE + 2,
+			 (bh->tbbi.loadsize + MMC_BLOCK_SIZE-1)/MMC_BLOCK_SIZE,
+			 (void*)bh->tbbi.loadaddr);
+	}
 
 #ifdef SECURE_ON
-	return readimage((unsigned char *)&bh, (unsigned char *)cbh,
-			(unsigned char *)bh.tbbi.loadaddr);
+	return readimage((unsigned char *)bh, (unsigned char *)hdr,
+			(unsigned char *)bh->tbbi.loadaddr);
 #else
 	return 0;
 #endif
