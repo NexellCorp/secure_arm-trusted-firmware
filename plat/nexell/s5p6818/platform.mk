@@ -103,7 +103,7 @@ BL31_SOURCES		+=	drivers/arm/cci/cci.c				\
 				${NEXELL_PLAT_SOC}/plat_sip.c			\
 				${NEXELL_PLAT_SOC}/plat_topology.c		\
 				${NEXELL_PLAT_SOC}/drivers/nx_clkpwr.c		\
-				${NEXELL_PLAT_SOC}/drivers/init_DDR3.c
+				${NEXELL_PLAT_SOC}/drivers/ddr3_sdram.c
 
 # Flag used by the S5P6818_platform port to determine the version of ARM GIC
 # architecture to use for interrupt management in EL3.

@@ -19,7 +19,7 @@
 #include <nx_clkpwr.h>
 #include <nx_alive.h>
 
-inline void DMC_Delay(int milisecond)
+void DMC_Delay(int milisecond)
 {
 	register volatile int count, temp;
 

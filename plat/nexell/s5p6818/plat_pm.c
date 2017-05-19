@@ -374,6 +374,11 @@ static void s5p6818_affinst_off(uint32_t afflvl, uint32_t state)
 		s5p6818_cpu_off();
 }
 
+/* ALIVESCRATCHRST1 */
+#define	SCR_WAKE_FN_RESET		(SCR_ALIVE_BASE + 0x0AC)
+#define	SCR_WAKE_FN_SET			(SCR_ALIVE_BASE + 0x0B0)
+#define	SCR_WAKE_FN_READ		(SCR_ALIVE_BASE + 0x0B4)
+
 static void suspend_to_ram(uint64_t sec_entrypoint)
 {
 	/* Alive power gate open */
@@ -394,8 +399,7 @@ static void suspend_to_ram(uint64_t sec_entrypoint)
 #endif
 }
 
-
-extern void enterSelfRefresh(void);
+extern void enter_self_refresh(void);
 extern void vdd_power_off(void);
 
 static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,
@@ -427,7 +431,7 @@ static void s5p6818_affinst_suspend(uint64_t sec_entrypoint,
 	suspend_to_ram(sec_entrypoint);
 
 	/* Enter DRAM Self refresh */
-	enterSelfRefresh();
+	enter_self_refresh();
 
 	/* Power Off */
 	vdd_power_off();
