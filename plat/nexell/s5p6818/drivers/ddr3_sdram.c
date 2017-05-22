@@ -62,11 +62,11 @@ void enter_self_refresh(void)
 	mmio_write_32(SCR_ALIVE_BASE, 1);
 
 	/* Read to Memroy Information (Scratch)*/
-	DDR3_CS_NUM = (mmio_read_32(SCR_WAKE_FN_READ) >> 0) & 0x3;
-	MR1_ODS = (mmio_read_32(SCR_WAKE_FN_READ) >> 2) & 0x1;
-	MR1_Rtt_Nom = (mmio_read_32(SCR_WAKE_FN_READ) >> 4) & 0x7;
-	MR1_nAL	= (mmio_read_32(SCR_WAKE_FN_READ) >> 8 ) & 0xF;
-	nCWL	= (mmio_read_32(SCR_WAKE_FN_READ) >> 12) & 0xF;
+	DDR3_CS_NUM = (mmio_read_32(SCR_USER_SIG6_READ) >> 0) & 0x3;
+	MR1_ODS = (mmio_read_32(SCR_USER_SIG6_READ) >> 2) & 0x1;
+	MR1_Rtt_Nom = (mmio_read_32(SCR_USER_SIG6_READ) >> 4) & 0x7;
+	MR1_nAL	= (mmio_read_32(SCR_USER_SIG6_READ) >> 8 ) & 0xF;
+	nCWL	= (mmio_read_32(SCR_USER_SIG6_READ) >> 12) & 0xF;
 
 	memcpy(&SBI, pSBI, sizeof(struct NX_SecondBootInfo));
 
