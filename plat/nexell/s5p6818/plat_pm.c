@@ -334,6 +334,7 @@ static int32_t s5p6818_do_plat_actions(uint32_t afflvl, uint32_t state)
 
 	return 0;
 }
+
 static void s5p6818_cpu_off(void)
 {
 	uint32_t regdata, linear_id;
@@ -342,7 +343,13 @@ static void s5p6818_cpu_off(void)
 	VERBOSE("cpu%d power down\n", linear_id);
 
 	regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
-	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,  regdata & ~(1<< linear_id));
+
+	/* Check the power-up register to be cleared. */
+	do {
+		mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, regdata & ~(1 << linear_id));
+		regdata = mmio_read_32(NXP_CPU_PWRUP_REQ_CTRL);
+	} while (regdata & (1 << linear_id));
+
 	/*
 	 * TODO afflvl 1 is need more power function. but currently skiped
 	 * if all cpu is off in same cluster, system will be corrupted.
