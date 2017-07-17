@@ -224,6 +224,10 @@ void psci_do_pwrup_cache_maintenance(void);
 
 /* Private exported functions from psci_system_off.c */
 void __dead2 psci_system_off(void);
+#ifdef SUPPORT_ANDROID
+void __dead2 psci_system_reset(uint32_t reason);
+#else
 void __dead2 psci_system_reset(void);
+#endif
 
 #endif /* __PSCI_PRIVATE_H__ */

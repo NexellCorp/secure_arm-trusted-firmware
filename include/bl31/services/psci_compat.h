@@ -97,7 +97,11 @@ typedef struct plat_pm_ops {
 	void (*affinst_suspend_finish)(unsigned int afflvl,
 				      unsigned int state);
 	void (*system_off)(void) __dead2;
+#ifdef SUPPORT_ANDROID
+	void (*system_reset)(uint32_t reason) __dead2;
+#else
 	void (*system_reset)(void) __dead2;
+#endif
 	int (*validate_power_state)(unsigned int power_state);
 	int (*validate_ns_entrypoint)(unsigned long ns_entrypoint);
 	unsigned int (*get_sys_suspend_power_state)(void);

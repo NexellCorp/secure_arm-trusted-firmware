@@ -52,7 +52,11 @@ void psci_system_off(void)
 	/* This function does not return. We should never get here */
 }
 
+#ifdef SUPPORT_ANDROID
+void psci_system_reset(uint32_t reason)
+#else
 void psci_system_reset(void)
+#endif
 {
 	psci_print_power_domain_map();
 
@@ -64,7 +68,11 @@ void psci_system_reset(void)
 	}
 
 	/* Call the platform specific hook */
+#ifdef SUPPORT_ANDROID
+	psci_plat_pm_ops->system_reset(reason);
+#else
 	psci_plat_pm_ops->system_reset();
+#endif
 
 	/* This function does not return. We should never get here */
 }
