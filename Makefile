@@ -267,6 +267,10 @@ endif
 #ASFLAGS			+=	-DPLAT_TRUST_MEM_SIZE=${PLAT_TRUST_MEM_SIZE}
 #endif
 
+ifeq (${QUICKBOOT},1)
+CFLAGS += -DQUICKBOOT
+endif
+
 ################################################################################
 # Include SPD Makefile if one has been specified
 ################################################################################

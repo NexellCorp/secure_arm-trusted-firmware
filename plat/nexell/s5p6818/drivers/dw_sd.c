@@ -784,7 +784,11 @@ bool nx_sdmmc_init(struct cardstatus *pcardstatus)
 	bool ret;
 
 	clkinfo.npllnum = NX_CLKSRC_SDMMC;
+#ifdef QUICKBOOT
+	clkinfo.nfreqhz = 100000000;
+#else
 	clkinfo.nfreqhz = 25000000;
+#endif
 
 	ret = nx_sdmmc_getclkparam(&clkinfo);
 	if (ret == false)
@@ -859,6 +863,7 @@ bool nx_sdmmc_init(struct cardstatus *pcardstatus)
 /*----------------------------------------------------------------------------*/
 bool	nx_sdmmc_terminate(struct cardstatus *pcardstatus)
 {
+#ifndef QUICKBOOT
 	volatile struct nx_sdmmc_registerset * const psdxcreg =
 				pgsdxcreg[pcardstatus->sdport];
 
@@ -877,6 +882,7 @@ bool	nx_sdmmc_terminate(struct cardstatus *pcardstatus)
 	pgsdclkgenreg[pcardstatus->sdport]->clkenb = 0;
 
 	nx_setresetcon(sdresetnum[pcardstatus->sdport], true);	/* reset on */
+#endif
 
 	return true;
 }
@@ -895,7 +901,11 @@ bool nx_sdmmc_open(struct cardstatus *pcardstatus)
 	/*----------------------------------------------------------------------
 	 * data transfer mode : Stand-by state
 	 */
+#ifdef QUICKBOOT
+	if (false == nx_sdmmc_setclock(pcardstatus, true, 100000000))
+#else
 	if (false == nx_sdmmc_setclock(pcardstatus, true, 25000000))
+#endif
 		return false;
 
 	if (false == nx_sdmmc_selectcard(pcardstatus))

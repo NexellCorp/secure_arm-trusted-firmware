@@ -155,6 +155,10 @@ void bl1_early_platform_setup(void)
 
 	INFO("BL1: 0x%lx - 0x%lx [size = %lu]\n", BL1_RAM_BASE, BL1_RAM_LIMIT,
 	     bl1_size);
+
+#ifdef QUICKBOOT
+	tf_printf("ATF BL1\n");
+#endif
 }
 
 /*******************************************************************************

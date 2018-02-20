@@ -183,6 +183,10 @@ int	deinit_mmc(unsigned int portnum);
 void bl2_platform_setup(void)
 {
 	plat_security_setup();
+
+#ifdef QUICKBOOT
+	tf_printf("ATF BL2\n");
+#endif
 }
 
 /* Flush the TF params and the TF plat params */

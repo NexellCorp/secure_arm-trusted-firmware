@@ -42,6 +42,9 @@
 #include <platform.h>
 #include <s5p6818_def.h>
 #include <s5p6818_private.h>
+#ifdef QUICKBOOT
+#include <debug.h>
+#endif
 
 /*******************************************************************************
  * Declarations of linker defined symbols which will help us find the layout
@@ -145,6 +148,10 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
  ******************************************************************************/
 void bl31_platform_setup(void)
 {
+#ifdef QUICKBOOT
+	tf_printf("ATF BL31\n");
+#endif
+
 	/* Initialize the gic cpu and distributor interfaces */
 	plat_gic_init();
 	arm_gic_setup();
