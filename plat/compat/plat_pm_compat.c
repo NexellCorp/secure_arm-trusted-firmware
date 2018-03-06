@@ -273,10 +273,17 @@ static void __dead2 system_off_compat(void)
 /*******************************************************************************
  * The PSCI compatibility helper for plat_pm_ops_t 'system_reset' hook.
  ******************************************************************************/
+#ifdef SUPPORT_ANDROID
+static void __dead2 system_reset_compat(uint32_t reason)
+{
+	pm_ops->system_reset(reason);
+}
+#else
 static void __dead2 system_reset_compat(void)
 {
 	pm_ops->system_reset();
 }
+#endif
 
 /*******************************************************************************
  * Export the compatibility compat_psci_ops. The assumption made is that the

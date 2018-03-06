@@ -193,6 +193,10 @@ ifneq (${BL31_ON_SRAM},0)
 CFLAGS			+=	-DBL31_ON_SRAM
 ASFLAGS			+=	-DBL31_ON_SRAM
 endif
+ifneq (${SUPPORT_ANDROID},0)
+CFLAGS			+= -DSUPPORT_ANDROID
+ASFLAGS			+= -DSUPPORT_ANDROID
+endif
 
 LDFLAGS			+=	--fatal-warnings -O1
 LDFLAGS			+=	--gc-sections

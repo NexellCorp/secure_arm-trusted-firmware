@@ -373,7 +373,11 @@ uint64_t psci_smc_handler(uint32_t smc_fid,
 			/* We should never return from psci_system_off() */
 
 		case PSCI_SYSTEM_RESET:
+#ifdef SUPPORT_ANDROID
+			psci_system_reset(x1);
+#else
 			psci_system_reset();
+#endif
 			/* We should never return from psci_system_reset() */
 
 		case PSCI_FEATURES:

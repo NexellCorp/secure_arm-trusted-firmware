@@ -601,8 +601,19 @@ void watchdog_start(uint16_t wtcnt)
 	mmio_write_32((uintptr_t)&pwdt->wtcon, regvalue | 1<<5); /* now reset */
 }
 
+#ifdef SUPPORT_ANDROID
+static void __dead2 s5p6818_system_reset(uint32_t reason)
+#else
 static void __dead2 s5p6818_system_reset(void)
+#endif
 {
+#ifdef SUPPORT_ANDROID
+	if (reason != 0) {
+		mmio_write_32(SCR_ALIVE_BASE, 1);
+		mmio_write_32(SCR_WAKE_FN_RESET, 0xffffffff);
+		mmio_write_32(SCR_WAKE_FN_SET, reason);
+	}
+#endif
 	watchdog_start(1);
 
 	wfi();
