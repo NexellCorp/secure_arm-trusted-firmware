@@ -125,7 +125,7 @@ void vdd_power_off(void)
 		mmio_write_32((uintptr_t)&palive->vddctrlrstreg, 0x00000001);
 
 		/* watchdog setup */
-		watchdog_start(0x3333);
+		watchdog_start(0x61);
 
 		/* all alive pend pending clear until power down. */
 		mmio_write_32((uintptr_t)&palive->alivegpiodetectpendreg, 0xFF);
