@@ -138,7 +138,8 @@ void vdd_power_off(void)
 		/* mmio_write_32((uintptr_t)&palive->ALIVEPWRGATEREG, 0x00000000); */
 
 		/* enter STOP mode. */
-		mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1));
+		/* watchdog timer working with pclk, but stop mode stop to pclk */
+		/* mmio_write_32((uintptr_t)&pclkpwr->pwrmode, (0x1 << 1)); */
 		while (1) {
 			/* now real entering point to stop mode. */
 			__asm__ __volatile__("wfi");
