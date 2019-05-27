@@ -271,6 +271,10 @@ ifeq (${QUICKBOOT},1)
 CFLAGS += -DQUICKBOOT
 endif
 
+ifeq (${SUPPORT_OTA_AB_UPDATE},1)
+CFLAGS += -DSUPPORT_OTA_AB_UPDATE
+endif
+
 ################################################################################
 # Include SPD Makefile if one has been specified
 ################################################################################

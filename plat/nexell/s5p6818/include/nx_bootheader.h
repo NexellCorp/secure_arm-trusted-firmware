@@ -191,6 +191,19 @@ struct nx_ddrphy_drvdsinfo {
 	uint32_t  _reserved1;
 };
 
+#ifdef SUPPORT_OTA_AB_UPDATE
+/* see, partmap.txt */
+/* bootloader_a start address = 0x10200 */
+/* bootloader_b start address = 0x4D0200 */
+/* offset = addr of slot B  -  addr of slot A */
+/*        = 0x4D0200 - 0x10200 */
+/*        = 0x4C0000 */
+#define OTA_UPDATE_BL2_ADDR_OFFSET_A            (0)
+#define OTA_UPDATE_BL2_ADDR_OFFSET_B            (0x4C0000)
+#define OTA_AB_UPDATE_BL2_MSG_A                 (0xAAAAAAAA)
+#define OTA_AB_UPDATE_BL2_MSG_B                 (0xBBBBBBBB)
+#endif
+
 struct nx_tbbinfo {
 	uint32_t vector[8];			/* 0x000 ~ 0x01f */
 	uint32_t vector_rel[8];			/* 0x020 ~ 0x03f */
@@ -204,8 +217,12 @@ struct nx_tbbinfo {
 
 	uint8_t unified;			/* 0x068 */
 	uint8_t bootdev;			/* 0x069 */
+#ifndef SUPPORT_OTA_AB_UPDATE
 	uint8_t _reserved1[6];			/* 0x06a ~ 0x06f */
-
+#else
+        uint8_t _reserved1[2];                  /* 0x06a ~ 0x06b */
+        uint32_t boot_slot_ab;                  /* 0x06c ~ 0x06f */
+#endif
 	uint8_t validslot[4];			/* 0x070 ~ 0x073 */
 	uint8_t loadorder[4];			/* 0x074 ~ 0x077 */
 
