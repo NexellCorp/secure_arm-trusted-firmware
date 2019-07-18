@@ -890,6 +890,11 @@ bool	nx_sdmmc_terminate(struct cardstatus *pcardstatus)
 /*----------------------------------------------------------------------------*/
 bool nx_sdmmc_open(struct cardstatus *pcardstatus)
 {
+	static bool is_open_success = false;
+
+	if (is_open_success)
+		return true;
+
 	/*----------------------------------------------------------------------
 	 * card identification mode : Identify & Initialize
 	 */
@@ -921,6 +926,7 @@ bool nx_sdmmc_open(struct cardstatus *pcardstatus)
 		return false;
 
 	nx_sdmmc_setbuswidth(pcardstatus, 4);
+	is_open_success = true;
 
 	return true;
 }
