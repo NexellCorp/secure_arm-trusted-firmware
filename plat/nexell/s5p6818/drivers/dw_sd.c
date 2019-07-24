@@ -24,6 +24,7 @@
 #include <dw_sdmmc.h>
 #include <nx_sdmmc.h>
 #include <nx_bootheader.h>
+#include <s5p6818_tieoff.h>
 
 #define NX_CLKSRC_SDMMC     (NX_CLKPWR_PLL_2)
 
@@ -740,7 +741,17 @@ static bool nx_sdmmc_setbuswidth(
 		return false;
 
 	/* 0 : 1-bit mode, 1 : 4-bit mode */
-	psdxcreg->ctype = buswidth >> 2;
+	switch (buswidth) {
+		case 8:
+			psdxcreg->ctype = (1 << 16);
+			break;
+		case 4:
+			psdxcreg->ctype = 1;
+			break;
+		default:
+			psdxcreg->ctype = 0;
+			break;
+	}
 
 	return true;
 }
@@ -888,13 +899,8 @@ bool	nx_sdmmc_terminate(struct cardstatus *pcardstatus)
 }
 
 /*----------------------------------------------------------------------------*/
-bool nx_sdmmc_open(struct cardstatus *pcardstatus)
+bool nx_sdmmc_open(struct cardstatus *pcardstatus, unsigned int buswidth)
 {
-	static bool is_open_success = false;
-
-	if (is_open_success)
-		return true;
-
 	/*----------------------------------------------------------------------
 	 * card identification mode : Identify & Initialize
 	 */
@@ -925,8 +931,7 @@ bool nx_sdmmc_open(struct cardstatus *pcardstatus)
 	if (false == nx_sdmmc_setblocklength(pcardstatus, BLOCK_LENGTH))
 		return false;
 
-	nx_sdmmc_setbuswidth(pcardstatus, 4);
-	is_open_success = true;
+	nx_sdmmc_setbuswidth(pcardstatus, buswidth);
 
 	return true;
 }
@@ -1124,8 +1129,12 @@ End:
  * dat1 b  3 1 gpio:0	dat1 d 25 1 gpio:0	dat1 c 21 2 gpio:1
  * dat2 b  5 1 gpio:0	dat2 d 26 1 gpio:0	dat2 c 22 2 gpio:1
  * dat3 b  7 1 gpio:0	dat3 d 27 1 gpio:0	dat3 c 23 2 gpio:1
+ *                                              dat4 e 21 2 gpio:0
+ *                                              dat5 e 22 2 gpio:0
+ *                                              dat6 e 23 2 gpio:0
+ *                                              dat7 e 24 2 gpio:0
  */
-void nx_sdpadsetalt(unsigned int portnum)
+void nx_sdpadsetalt(unsigned int portnum, unsigned int buswidth)
 {
 	struct nx_gpio_registerset (*volatile const pgpio)[1] =
 		(struct nx_gpio_registerset (*)[])PHY_BASEADDR_GPIOA_MODULE;
@@ -1201,6 +1210,26 @@ void nx_sdpadsetalt(unsigned int portnum)
 	/*	pgpioc->gpiox_pullenb                 |=  (0x3f<<18); */
 		pgpioc->gpiox_pullenb                 |=  (0x3e<<18);      /* clk is not pull-up. */
 		pgpioc->gpiox_pullenb_disable_default |=  (0x3f<<18);
+
+		if (buswidth == 8) {
+			volatile struct nx_gpio_registerset *pgpioe =
+				(struct nx_gpio_registerset *)pgpio[NX_GPIO_GROUP_E];
+			register unsigned int *pgpiocrega2 =
+				(unsigned int *)&pgpio[NX_GPIO_GROUP_E]->gpioxaltfn[1]; /* e 21, 22, 23, 24 */
+			*pgpiocrega2 = (*pgpiocrega2 & ~0x0003fc00) | 0x0002a800;	/* all alt is 2 */
+			pgpioe->gpiox_slew                    &= ~(0x0f<<21);
+			pgpioe->gpiox_slew_disable_default    |=  (0x0f<<21);
+			pgpioe->gpiox_drv0                    |=  (0x0f<<21);
+			pgpioe->gpiox_drv0_disable_default    |=  (0x0f<<21);
+			pgpioe->gpiox_drv1                    |=  (0x0f<<21);
+			pgpioe->gpiox_drv1_disable_default    |=  (0x0f<<21);
+			pgpioe->gpiox_pullsel                 |=  (0x0f<<21);
+			pgpioe->gpiox_pullsel_disable_default |=  (0x0f<<21);
+			pgpioe->gpiox_pullenb                 |=  (0x0f<<21);
+			pgpioe->gpiox_pullenb_disable_default |=  (0x0f<<21);
+
+			nx_tieoff_set(NX_TIEOFF_MMC_8BIT, 1);
+		}
 	}
 }
 
@@ -1274,6 +1303,22 @@ void nx_sdpadsetgpio(unsigned int portnum)
 		pgpioc->gpiox_pullsel_disable_default &= ~(0x3f<<18);
 		pgpioc->gpiox_pullenb                 &= ~(0x3f<<18);
 		pgpioc->gpiox_pullenb_disable_default &= ~(0x3f<<18);
+
+		volatile struct nx_gpio_registerset *pgpioe =
+			(struct nx_gpio_registerset *)pgpio[NX_GPIO_GROUP_E];
+		volatile unsigned int *pgpiocrega2 =
+			(unsigned int *)&pgpio[NX_GPIO_GROUP_E]->gpioxaltfn[1];
+		*pgpiocrega2 = (*pgpiocrega2 & ~0x0003fc00);	/* all gpio is 0 */
+		pgpioe->gpiox_slew                    |=  (0x0f<<21);
+		pgpioe->gpiox_slew_disable_default    |=  (0x0f<<21);
+		pgpioe->gpiox_drv0                    &= ~(0x0f<<21);
+		pgpioe->gpiox_drv0_disable_default    |=  (0x0f<<21);
+		pgpioe->gpiox_drv1                    &= ~(0x0f<<21);
+		pgpioe->gpiox_drv1_disable_default    |=  (0x0f<<21);
+		pgpioe->gpiox_pullsel                 &= ~(0x0f<<21);
+		pgpioe->gpiox_pullsel_disable_default &= ~(0x0f<<21);
+		pgpioe->gpiox_pullenb                 &= ~(0x0f<<21);
+		pgpioe->gpiox_pullenb_disable_default &= ~(0x0f<<21);
 	}
 }
 #endif
@@ -1281,14 +1326,24 @@ void nx_sdpadsetgpio(unsigned int portnum)
 bool init_mmc(unsigned int portnum)
 {
 	struct cardstatus *pcardstatus;
+#if PLAT == s5p6818 && defined(QUICKBOOT)
+	int mmc_buswidth = 8;
+#else
+	int mmc_buswidth = 4;
+#endif
 
 	pcardstatus = &lcardstatus;
 
 	pcardstatus->sdport = portnum;
 
-	nx_sdpadsetalt(portnum);
+	nx_sdpadsetalt(portnum, mmc_buswidth);
 
 	nx_sdmmc_init(pcardstatus);
+
+	if (true != nx_sdmmc_open(pcardstatus, mmc_buswidth)) {
+		ERROR("cannot detect sdmmc\r\n");
+		return false;
+	}
 
 	return true;
 }
@@ -1315,11 +1370,6 @@ bool load_mmc(unsigned int portnum,
 	bool	result = false;
 	volatile struct nx_sdmmc_registerset * const psdxcreg =
 		pgsdxcreg[pcardstatus->sdport];
-
-	if (true != nx_sdmmc_open(pcardstatus)) {
-		ERROR("cannot detect sdmmc\r\n");
-		return false;
-	}
 
 	if (0 == (psdxcreg->status & NX_SDXC_STATUS_FIFOEMPTY)) {
 		VERBOSE("fifo reset!!!\r\n");

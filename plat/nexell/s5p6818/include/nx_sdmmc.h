@@ -258,7 +258,7 @@ bool nx_sdmmc_init(struct cardstatus *pcardstatus);
 bool nx_sdmmc_terminate(struct cardstatus *pcardstatus);
 
 /*----------------------------------------------------------------------------*/
-bool nx_sdmmc_open(struct cardstatus *pcardstatus);
+bool nx_sdmmc_open(struct cardstatus *pcardstatus, unsigned int buswidth);
 
 /*----------------------------------------------------------------------------*/
 bool nx_sdmmc_close(struct cardstatus *pcardstatus);
@@ -267,7 +267,7 @@ bool nx_sdmmc_close(struct cardstatus *pcardstatus);
 bool nx_sdmmc_readsectors(struct cardstatus *pcardstatus, unsigned int sectornum,
 			   unsigned int numberofsector, unsigned int *pdwbuffer);
 
-void nx_sdpadsetalt(unsigned int portnum);
+void nx_sdpadsetalt(unsigned int portnum, unsigned int buswidth);
 
 void nx_sdpadsetgpio(unsigned int portnum);
 
