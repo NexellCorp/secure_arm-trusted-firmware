@@ -51,7 +51,6 @@
 #include <nx_gpio.h>
 #include <nx_i2c.h>
 #include <nx_rstcon.h>
-#include <nx_tieoff.h>
 #include <nx_wdt.h>
 
 unsigned int targetcpu_id_bitfield;
